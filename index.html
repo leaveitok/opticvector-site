@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OpticVector AI — Public-sector AI governance & concierge software</title>
+<meta name="description" content="OpticVector AI builds compliance-native software for local government: TRAIGA Auditor for AI-governance compliance, and GovAssist AI, a grounded bilingual citizen concierge with an optional digital-human avatar." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-170 -170 340 340'%3E%3Ccircle r='150' fill='%230F1E2D'/%3E%3Cpath d='M -58 -40 L 0 74 L 58 -40' fill='none' stroke='%23fff' stroke-width='34' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --navy:#0F1E2D; --navy-2:#152A3E; --blue:#3E9BE0; --blue-d:#2f83c4;
+  --ink:#0F1E2D; --mut:#5b6b7a; --line:#e4e9ee; --bg:#f6f8fa; --white:#fff;
+  --ring:rgba(62,155,224,.35);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:Montserrat,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:var(--white);line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1160px;margin:0 auto;padding:0 24px}
+.btn{display:inline-flex;align-items:center;gap:8px;border-radius:10px;padding:12px 20px;font-weight:600;font-size:15px;cursor:pointer;border:1px solid transparent;transition:.15s}
+.btn.primary{background:var(--blue);color:#fff}
+.btn.primary:hover{background:var(--blue-d)}
+.btn.ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.3)}
+.btn.ghost:hover{border-color:#fff}
+.btn.dark{background:var(--navy);color:#fff}
+.btn.dark:hover{background:var(--navy-2)}
+.eyebrow{letter-spacing:.2em;text-transform:uppercase;font-size:12px;font-weight:700;color:var(--blue)}
+h1,h2,h3{letter-spacing:-.01em;line-height:1.15;margin:0}
+
+/* NAV */
+header.nav{position:sticky;top:0;z-index:900;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.nav .row{display:flex;align-items:center;justify-content:space-between;height:70px}
+.brand{display:flex;align-items:center;gap:11px}
+.brand svg{width:38px;height:38px}
+.brand .wm{font-size:21px;font-weight:300;color:var(--navy)}
+.brand .wm b{font-weight:800}
+.brand .wm .ai{color:var(--blue);font-weight:600;margin-left:5px}
+.nav nav{display:flex;align-items:center;gap:28px}
+.nav nav a{font-size:15px;font-weight:500;color:#33414e}
+.nav nav a:hover{color:var(--blue)}
+.nav .navcta{display:flex;align-items:center;gap:14px}
+@media(max-width:860px){.nav nav.links{display:none}}
+
+/* HERO */
+.hero{position:relative;background:radial-gradient(1200px 600px at 78% -10%,#1c3a56 0,transparent 60%),linear-gradient(180deg,#0F1E2D 0,#122438 100%);color:#fff;overflow:hidden}
+.hero::after{content:"";position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.05) 1px,transparent 1.4px);background-size:26px 26px;opacity:.5;pointer-events:none}
+.hero .wrap{position:relative;z-index:2;padding:96px 24px 104px;max-width:1160px}
+.hero h1{font-size:clamp(34px,5vw,58px);font-weight:800;max-width:14ch}
+.hero h1 .g{color:var(--blue)}
+.hero p.lead{font-size:clamp(17px,2vw,21px);color:#c7d3de;max-width:60ch;margin:22px 0 34px;font-weight:400}
+.hero .cta{display:flex;gap:14px;flex-wrap:wrap}
+.hero .hint{margin-top:26px;font-size:13.5px;color:#93a6b6;display:flex;align-items:center;gap:8px}
+.pulse-dot{width:9px;height:9px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 0 var(--ring);animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 var(--ring)}70%{box-shadow:0 0 0 12px transparent}100%{box-shadow:0 0 0 0 transparent}}
+
+/* TRUST STRIP */
+.trust{background:var(--navy-2);color:#c7d3de;border-top:1px solid rgba(255,255,255,.06)}
+.trust .row{display:flex;flex-wrap:wrap;gap:12px 34px;justify-content:center;padding:16px 24px;font-size:13.5px;font-weight:500}
+.trust .row span{display:flex;align-items:center;gap:8px}
+.trust .chk{color:var(--blue);font-weight:800}
+
+/* SECTION */
+section.block{padding:88px 0}
+.sec-head{max-width:64ch}
+.sec-head h2{font-size:clamp(26px,3.4vw,38px);font-weight:800;margin:12px 0 0}
+.sec-head p{color:var(--mut);font-size:17px;margin:16px 0 0}
+
+/* PRODUCTS */
+.prod-grid{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:44px}
+@media(max-width:880px){.prod-grid{grid-template-columns:1fr}}
+.card{border:1px solid var(--line);border-radius:18px;padding:34px;background:#fff;display:flex;flex-direction:column;transition:.18s}
+.card:hover{box-shadow:0 14px 40px rgba(15,30,45,.08);transform:translateY(-2px)}
+.card .status{align-self:flex-start;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:5px 11px;border-radius:20px;margin-bottom:18px}
+.card .status.live{background:#e6f4ec;color:#1f7a4d}
+.card .status.dev{background:#eaf3fb;color:#2f83c4}
+.card h3{font-size:23px;font-weight:800}
+.card .tag{color:var(--blue);font-weight:600;font-size:14px;margin-top:4px}
+.card p.d{color:#33414e;font-size:15.5px;margin:16px 0 18px}
+.card ul{list-style:none;margin:0 0 22px;padding:0;display:flex;flex-direction:column;gap:10px}
+.card li{position:relative;padding-left:26px;font-size:14.5px;color:#33414e}
+.card li::before{content:"";position:absolute;left:0;top:8px;width:12px;height:12px;border-radius:3px;border:2px solid var(--blue)}
+.card .foot{margin-top:auto}
+
+/* CONCIERGE FEATURE */
+.concierge{background:linear-gradient(180deg,#0F1E2D,#132538);color:#fff;border-radius:24px;padding:56px;display:grid;grid-template-columns:1.1fr .9fr;gap:44px;align-items:center;margin-top:16px}
+@media(max-width:880px){.concierge{grid-template-columns:1fr;padding:36px}}
+.concierge h2{font-size:clamp(24px,3vw,34px);font-weight:800}
+.concierge p{color:#c7d3de;font-size:16.5px;margin:16px 0}
+.concierge .mini{display:flex;gap:22px;flex-wrap:wrap;margin-top:22px}
+.concierge .mini b{color:#fff;font-size:15px}
+.concierge .mini small{color:#93a6b6;display:block;font-size:13px}
+.demo-card{background:#fff;color:var(--ink);border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.demo-card .dc-head{background:var(--navy);color:#fff;display:flex;align-items:center;gap:12px;padding:14px 16px}
+.demo-card .dc-body{padding:16px;display:flex;flex-direction:column;gap:10px;min-height:150px}
+.bub{max-width:85%;padding:9px 13px;border-radius:13px;font-size:14px;line-height:1.45}
+.bub.u{align-self:flex-end;background:var(--navy);color:#fff;border-bottom-right-radius:3px}
+.bub.b{align-self:flex-start;background:#eef2f8;border-bottom-left-radius:3px}
+.bub .src{margin-top:6px;font-size:12px;color:var(--blue-d)}
+
+/* WHY */
+.why-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:44px}
+@media(max-width:880px){.why-grid{grid-template-columns:1fr}}
+.why{padding:28px;border:1px solid var(--line);border-radius:16px;background:#fbfcfd}
+.why .ic{width:44px;height:44px;border-radius:11px;background:#eaf3fb;display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+.why h3{font-size:18px;font-weight:700}
+.why p{color:var(--mut);font-size:14.5px;margin:10px 0 0}
+
+/* CTA */
+.cta-band{background:var(--navy);color:#fff;border-radius:24px;padding:56px;text-align:center;position:relative;overflow:hidden}
+.cta-band::after{content:"";position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.05) 1px,transparent 1.4px);background-size:26px 26px;opacity:.5}
+.cta-band>*{position:relative;z-index:2}
+.cta-band h2{font-size:clamp(26px,3.4vw,36px);font-weight:800}
+.cta-band p{color:#c7d3de;max-width:56ch;margin:16px auto 28px;font-size:17px}
+
+/* FOOTER */
+footer.ft{background:#0b1622;color:#9fb0bf;padding:52px 0 30px;font-size:14px}
+footer .cols{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:30px}
+@media(max-width:760px){footer .cols{grid-template-columns:1fr}}
+footer h4{color:#fff;font-size:13px;letter-spacing:.1em;text-transform:uppercase;margin:0 0 14px}
+footer a{display:block;color:#9fb0bf;margin:8px 0}
+footer a:hover{color:var(--blue)}
+footer .legal{border-top:1px solid rgba(255,255,255,.08);margin-top:36px;padding-top:20px;font-size:12.5px;color:#6f8091;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.preview-note{background:#3E9BE0;color:#0b1622;text-align:center;font-size:12.5px;font-weight:600;padding:7px 12px}
+
+/* ================= CONCIERGE WIDGET ================= */
+#vera-launch{position:fixed;right:22px;bottom:22px;z-index:1000;display:flex;align-items:center;gap:11px;background:var(--navy);color:#fff;border:none;border-radius:40px;padding:10px 20px 10px 12px;box-shadow:0 10px 30px rgba(15,30,45,.35);cursor:pointer;font-family:inherit;font-weight:600;font-size:15px}
+#vera-launch:hover{background:var(--navy-2)}
+#vera-launch:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.v-ava{width:38px;height:38px;border-radius:50%;flex:none;position:relative;background:radial-gradient(circle at 35% 30%,#3E9BE0,#1E5C8C 70%);display:flex;align-items:center;justify-content:center}
+.v-ava svg{width:22px;height:22px}
+.v-ava.big{width:44px;height:44px}
+.v-ring{position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--blue);opacity:0;animation:vring 2.4s infinite}
+@keyframes vring{0%{transform:scale(.9);opacity:.6}100%{transform:scale(1.35);opacity:0}}
+#vera-panel{position:fixed;right:22px;bottom:22px;z-index:1001;width:390px;max-width:calc(100vw - 24px);height:600px;max-height:calc(100vh - 40px);background:#fff;border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.4);display:none;flex-direction:column;overflow:hidden;border:1px solid #d8dee6}
+#vera-panel.open{display:flex}
+.vp-head{background:var(--navy);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:12px}
+.vp-head .who{flex:1}
+.vp-head .who b{font-size:15px;display:block}
+.vp-head .who small{color:#9fc4e6;font-size:12px}
+.vp-head button{background:transparent;border:none;color:#cadcfc;cursor:pointer;font-size:13px;font-weight:600;padding:6px;border-radius:6px}
+.vp-head button:hover{background:rgba(255,255,255,.1)}
+.vp-disc{background:#eaf3fb;color:#245377;font-size:11.5px;line-height:1.4;padding:8px 14px;border-bottom:1px solid #d6e6f4}
+.vp-log{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:11px;background:#f6f8fa}
+.vmsg{max-width:86%;padding:10px 13px;border-radius:13px;font-size:14px;line-height:1.45;animation:vfade .18s ease-out}
+@keyframes vfade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.vmsg.user{align-self:flex-end;background:var(--navy);color:#fff;border-bottom-right-radius:3px}
+.vmsg.bot{align-self:flex-start;background:#fff;border:1px solid #e4e9ee;border-bottom-left-radius:3px}
+.vmsg .vsrc{margin-top:7px;font-size:12px}
+.vmsg .vsrc a{color:var(--blue-d);font-weight:600}
+.vmsg .vsrc b{display:block;color:var(--mut);font-weight:600;margin-bottom:2px}
+.vchips{display:flex;flex-wrap:wrap;gap:7px;padding:0 14px 6px}
+.vchip{background:#eaf3fb;color:#245377;border:1px solid #d6e6f4;border-radius:16px;padding:6px 11px;font-size:12.5px;cursor:pointer;font-family:inherit}
+.vchip:hover{background:#dcecf9}
+.vp-form{display:flex;gap:8px;padding:12px;border-top:1px solid #e4e9ee;background:#fff}
+.vp-form input{flex:1;padding:11px 13px;border:1px solid #c8d0da;border-radius:10px;font-size:14px;font-family:inherit;min-height:44px}
+.vp-form input:focus-visible{outline:2px solid var(--blue)}
+.vp-form button{background:var(--blue);color:#fff;border:none;border-radius:10px;padding:0 16px;font-weight:600;cursor:pointer;min-height:44px;font-family:inherit}
+.vtyping{align-self:flex-start;color:var(--mut);font-size:13px;padding:4px 6px}
+@media(prefers-reduced-motion:reduce){.v-ring,.pulse-dot{animation:none}}
+</style>
+</head>
+<body>
+
+<div class="preview-note">Preview build — OpticVector AI mock site · not yet live at opticvector.ai</div>
+
+<!-- NAV -->
+<header class="nav">
+  <div class="wrap row">
+    <a class="brand" href="#top" aria-label="OpticVector AI home">
+      <svg viewBox="-161 -161 322 322" aria-hidden="true"><path d="M 38.31,-105.25 L 43.16,-103.35 L 47.92,-101.23 L 52.58,-98.89 L 57.12,-96.34 L 61.55,-93.57 L 65.83,-90.61 L 69.98,-87.45 L 73.97,-84.10 L 77.80,-80.57 L 81.47,-76.86 L 84.95,-72.99 L 88.26,-68.95 L 91.37,-64.77 L 94.28,-60.45 L 96.99,-56.00 L 99.50,-51.43 L 101.78,-46.74 L 103.84,-41.96 L 105.68,-37.08 L 107.29,-32.12 L 108.67,-27.10 L 109.82,-22.01 L 110.72,-16.88 L 111.39,-11.71 L 111.81,-6.51 L 111.99,-1.30 L 111.93,3.91 L 111.63,9.11 L 111.08,14.30 L 110.30,19.45 L 109.27,24.56 L 108.01,29.62 L 106.52,34.61 L 104.79,39.53 L 102.84,44.36 L 100.66,49.10 L 98.27,53.73 L 95.67,58.24 L 92.85,62.63 L 89.84,66.88 L 86.63,70.99 L 83.23,74.94 L 79.66,78.73 L 75.91,82.35 L 71.99,85.80 L 67.92,89.05 L 63.71,92.12 L 59.35,94.98 L 54.87,97.64 L 50.27,100.09 L 45.55,102.32 L 40.74,104.33 L 35.85,106.11 L 30.87,107.66 L 25.83,108.98 L 20.73,110.06 L 15.59,110.91 L 10.41,111.52 L 5.21,111.88 L 0.00,112.00 L -5.21,111.88 L -10.41,111.52 L -15.59,110.91 L -20.73,110.06 L -25.83,108.98 L -30.87,107.66 L -35.85,106.11 L -40.74,104.33 L -45.55,102.32 L -50.27,100.09 L -54.87,97.64 L -59.35,94.98 L -63.71,92.12 L -67.92,89.05 L -71.99,85.80 L -75.91,82.35 L -79.66,78.73 L -83.23,74.94 L -86.63,70.99 L -89.84,66.88 L -92.85,62.63 L -95.67,58.24 L -98.27,53.73 L -100.66,49.10 L -102.84,44.36 L -104.79,39.53 L -106.52,34.61 L -108.01,29.62 L -109.27,24.56 L -110.30,19.45 L -111.08,14.30 L -111.63,9.11 L -111.93,3.91 L -111.99,-1.30 L -111.81,-6.51 L -111.39,-11.71 L -110.72,-16.88 L -109.82,-22.01 L -108.67,-27.10 L -107.29,-32.12 L -105.68,-37.08 L -103.84,-41.96 L -101.78,-46.74 L -99.50,-51.43 L -96.99,-56.00 L -94.28,-60.45 L -91.37,-64.77 L -88.26,-68.95 L -84.95,-72.99 L -81.47,-76.86 L -77.80,-80.57 L -73.97,-84.10 L -69.98,-87.45 L -65.83,-90.61 L -61.55,-93.57 L -57.12,-96.34 L -52.58,-98.89 L -47.92,-101.23 L -43.16,-103.35 L -38.31,-105.25" fill="none" stroke="#0F1E2D" stroke-width="30" stroke-linecap="round"/><path d="M -58,-40 L 0,74 L 58,-40" fill="none" stroke="#3E9BE0" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="wm"><b>Optic</b>Vector<span class="ai">AI</span></span>
+    </a>
+    <nav class="links">
+      <a href="#products">Products</a>
+      <a href="#concierge">Avatar Concierge</a>
+      <a href="#why">Why OpticVector</a>
+      <a href="#company">Company</a>
+    </nav>
+    <div class="navcta">
+      <a href="#contact" class="btn primary">Request a briefing</a>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero" id="top">
+  <div class="wrap">
+    <p class="eyebrow">OpticVector AI · Public-sector AI software</p>
+    <h1>See the AI. <span class="g">Govern it.</span> Answer for it.</h1>
+    <p class="lead">OpticVector AI is a modular software house for local government — pairing AI-governance compliance with grounded, citizen-facing concierge intelligence. Compliance-native by construction, built from live evidence.</p>
+    <div class="cta">
+      <a href="#products" class="btn primary">Explore the platform</a>
+      <button class="btn ghost" onclick="Vera.open()">Talk to our AI concierge</button>
+    </div>
+    <div class="hint"><span class="pulse-dot"></span> Try it now — the assistant on this site is our own concierge product, answering only from this site's content.</div>
+  </div>
+</section>
+
+<!-- TRUST -->
+<div class="trust">
+  <div class="row">
+    <span><span class="chk">✓</span> TRAIGA (HB 149) AI-disclosure built in</span>
+    <span><span class="chk">✓</span> WCAG 2.2 AA by construction</span>
+    <span><span class="chk">✓</span> Zero-PII by default</span>
+    <span><span class="chk">✓</span> Grounded to verified sources — cite or defer</span>
+  </div>
+</div>
+
+<!-- PRODUCTS -->
+<section class="block" id="products">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">The platform</p>
+      <h2>Two modules. One governance backbone.</h2>
+      <p>OpticVector AI builds for the government that <em>consumes</em> AI — not the labs that build it. Each module ships compliance-native and is designed to reinforce the other.</p>
+    </div>
+    <div class="prod-grid">
+
+      <div class="card">
+        <span class="status live">● Live in production</span>
+        <h3>TRAIGA Auditor</h3>
+        <div class="tag">AI-governance compliance (GRC)</div>
+        <p class="d">Discover the AI your government already runs, judge it against Texas HB 149 (TRAIGA), and defend the city with regulator-ready artifacts — all from live, re-verifiable evidence.</p>
+        <ul>
+          <li>Four discovery channels — outside-in scanner, staff-usage DLP, procurement import, and council-agenda mining — resolving to one canonical AI registry.</li>
+          <li>Compliance engine validates disclosure, timing, dark-pattern and privacy rules; every failure opens a 60-day cure clock.</li>
+          <li>Generates the artifacts a regulator asks for: AG Response Package, Written Statement of Cure, and a Safe-Harbor alignment to a 14-control NIST AI RMF profile.</li>
+          <li>Fail-secure by design — a blocked or failed scan is never reported clean.</li>
+        </ul>
+        <div class="foot"><button class="btn dark" onclick="Vera.ask('What is TRAIGA Auditor?')">Ask Vera about TRAIGA Auditor →</button></div>
+      </div>
+
+      <div class="card">
+        <span class="status dev">● In development</span>
+        <h3>GovAssist AI</h3>
+        <div class="tag">Grounded citizen concierge · optional avatar</div>
+        <p class="d">A white-labeled municipal concierge that answers only from a city's own published information — bilingual by design, accessible by default, with an optional digital-human avatar layer.</p>
+        <ul>
+          <li>Strict retrieval-grounding: cite the source, or defer to the right department. Never bluffs a civic answer.</li>
+          <li>Independent English &amp; Spanish paths — not round-tripped machine translation of statutory text.</li>
+          <li>Accessible-first: WCAG 2.2 AA text/voice widget is the default; the avatar is an optional premium layer, never the sole channel.</li>
+          <li>Zero-PII, one-line embed as a Web Component — drops into any CMS with no style collisions.</li>
+        </ul>
+        <div class="foot"><button class="btn dark" onclick="Vera.ask('What is GovAssist AI?')">Ask Vera about GovAssist →</button></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- CONCIERGE FEATURE -->
+<section class="block" id="concierge" style="padding-top:0">
+  <div class="wrap">
+    <div class="concierge">
+      <div>
+        <p class="eyebrow" style="color:var(--blue)">The demo is the product</p>
+        <h2>Meet Vera — the concierge running on this very site.</h2>
+        <p>The assistant in the corner of this page is our own GovAssist concierge, pointed at OpticVector's content. Ask her anything about the company or the products: she answers only from this site, cites what she used, and defers honestly when the answer isn't published.</p>
+        <p>That's the pitch to a city — the exact experience your residents would get, dogfooded on our own site before we ever ask you to embed it.</p>
+        <div class="mini">
+          <div><b>Grounded</b><small>Cite the source or defer</small></div>
+          <div><b>Bilingual</b><small>English &amp; Español</small></div>
+          <div><b>Compliant</b><small>AI-disclosed, zero-PII</small></div>
+        </div>
+        <div style="margin-top:26px"><button class="btn primary" onclick="Vera.open()">Open the concierge</button></div>
+      </div>
+      <div class="demo-card" aria-hidden="true">
+        <div class="dc-head"><span class="v-ava"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" fill="#fff"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" fill="#fff"/></svg></span><b>Vera · City Assistant</b></div>
+        <div class="dc-body">
+          <div class="bub u">How do I pay my water bill?</div>
+          <div class="bub b">You can pay online through the Utility Billing portal, by phone, or in person at City Hall.<div class="src">Source: Utility Billing →</div></div>
+          <div class="bub u">¿Y en español?</div>
+          <div class="bub b">Claro — puede pagar en línea, por teléfono, o en persona. Aquí está la página de facturación.<div class="src">Fuente: Facturación de Servicios →</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WHY -->
+<section class="block" id="why" style="background:var(--bg)">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Why OpticVector</p>
+      <h2>Built for the consumer of AI, not the builder.</h2>
+      <p>Incumbent governance tools sell document workflows to model builders at enterprise prices. We start from live evidence of the AI a government is actually running.</p>
+    </div>
+    <div class="why-grid">
+      <div class="why">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2f83c4" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg></div>
+        <h3>Discovery-fed</h3>
+        <p>Compliance and answers are built from what we actually find running — scans, staff usage, procurement, agendas — not a blank template.</p>
+      </div>
+      <div class="why">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2f83c4" stroke-width="2"><path d="M12 3l7 4v5c0 4.4-3 7.7-7 9-4-1.3-7-4.6-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg></div>
+        <h3>Compliance-native</h3>
+        <p>TRAIGA disclosure, WCAG 2.2 AA, and zero-PII are designed in from the first line — not bolted on before an RFP.</p>
+      </div>
+      <div class="why">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2f83c4" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div>
+        <h3>Governance-as-code</h3>
+        <p>Vendor signatures, statutory rules, and framework crosswalks live in one schema — new vendors and new states' laws are data edits, so coverage compounds.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPANY -->
+<section class="block" id="company">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Company</p>
+      <h2>A software house for public-sector AI.</h2>
+      <p>OpticVector AI is built by public-sector technology leadership with a direct line to the market it serves — Texas municipalities regulated under HB 149, reachable as a cohort through the ~1,200-member TAGITM network. Vigilance, clarity, and oversight are the brand and the product.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="block" id="contact" style="padding-top:0">
+  <div class="wrap">
+    <div class="cta-band">
+      <h2>Ready to see the AI you're already running?</h2>
+      <p>Request a briefing and we'll scan a public site live — and show you AI you may not know is there. No obligation, no PII stored.</p>
+      <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
+        <a href="mailto:hello@opticvector.ai" class="btn primary">Request a briefing</a>
+        <button class="btn ghost" onclick="Vera.open()">Ask the concierge a question</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="ft">
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <div class="brand" style="margin-bottom:14px">
+          <svg viewBox="-170 -170 340 340" width="34" height="34" aria-hidden="true"><circle r="150" fill="#152A3E"/><path d="M -58 -40 L 0 74 L 58 -40" fill="none" stroke="#3E9BE0" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="wm" style="color:#fff;font-weight:300;font-size:19px"><b style="font-weight:800">Optic</b>Vector<span style="color:#3E9BE0;font-weight:600;margin-left:5px">AI</span></span>
+        </div>
+        <p style="max-width:34ch;color:#8496a6">Compliance-native AI software for local government — governance, discovery, and grounded citizen concierge.</p>
+      </div>
+      <div>
+        <h4>Products</h4>
+        <a href="#products">TRAIGA Auditor</a>
+        <a href="#products">GovAssist AI</a>
+        <a href="#concierge">Avatar concierge</a>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="#why">Why OpticVector</a>
+        <a href="#company">About</a>
+        <a href="mailto:hello@opticvector.ai">Contact</a>
+      </div>
+    </div>
+    <div class="legal">
+      <span>© 2026 OpticVector AI. All rights reserved.</span>
+      <span>TRAIGA Auditor produces candidate compliance signals for human and legal review — not legal advice or enforcement determinations.</span>
+    </div>
+  </div>
+</footer>
+
+<!-- ================= CONCIERGE WIDGET ================= -->
+<button id="vera-launch" onclick="Vera.open()" aria-haspopup="dialog" aria-label="Open OpticVector AI concierge">
+  <span class="v-ava"><span class="v-ring"></span><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" fill="#fff"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" fill="#fff"/></svg></span>
+  Ask Vera
+</button>
+
+<section id="vera-panel" role="dialog" aria-modal="false" aria-label="OpticVector AI concierge">
+  <div class="vp-head">
+    <span class="v-ava big"><span class="v-ring"></span><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" fill="#fff"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" fill="#fff"/></svg></span>
+    <span class="who"><b>Vera</b><small>OpticVector AI concierge</small></span>
+    <button id="vera-lang" onclick="Vera.toggleLang()">Español</button>
+    <button onclick="Vera.close()" aria-label="Close">✕</button>
+  </div>
+  <div class="vp-disc" id="vera-disc"></div>
+  <div class="vp-log" id="vera-log" role="log" aria-live="polite" aria-relevant="additions"></div>
+  <div class="vchips" id="vera-chips"></div>
+  <form class="vp-form" id="vera-form" autocomplete="off">
+    <input id="vera-input" type="text" aria-label="Type your question" />
+    <button type="submit" id="vera-send">Send</button>
+  </form>
+</section>
+
+<script>
+/* ============================================================
+   Vera — OpticVector AI concierge (mock).
+   Demonstrates the GovAssist doctrine on OpticVector's OWN site:
+   grounded to a small knowledge base, cite the source or defer.
+   No backend, no PII stored. Swap this for the real GovAssist
+   Web Component (widget/govassist-widget.js) wired to the API.
+   ============================================================ */
+const Vera = (function(){
+  const UI = {
+    en:{disc:"You're chatting with Vera, an AI assistant. She answers only from OpticVector AI's published information and defers when it isn't here. No personal data is stored.",
+        ph:"Ask about OpticVector, TRAIGA Auditor, GovAssist…", send:"Send", lang:"Español",
+        greet:"Hi — I'm Vera, OpticVector AI's concierge. Ask me about the company, TRAIGA Auditor, or GovAssist AI. I answer only from this site.",
+        sources:"Source", think:"Looking that up…",
+        chips:["What does OpticVector do?","What is TRAIGA Auditor?","Is it accessible?","How much does it cost?"]},
+    es:{disc:"Está hablando con Vera, un asistente de IA. Responde solo con la información publicada de OpticVector AI y remite cuando no está aquí. No se guardan datos personales.",
+        ph:"Pregunte sobre OpticVector, TRAIGA Auditor, GovAssist…", send:"Enviar", lang:"English",
+        greet:"Hola — soy Vera, la asistente de OpticVector AI. Pregúnteme sobre la empresa, TRAIGA Auditor o GovAssist AI. Respondo solo con la información de este sitio.",
+        sources:"Fuente", think:"Buscando eso…",
+        chips:["¿Qué hace OpticVector?","¿Qué es TRAIGA Auditor?","¿Es accesible?","¿Cuánto cuesta?"]}
+  };
+  // knowledge base: keyword intents -> grounded answer + on-site source
+  const KB = [
+    {k:["what","opticvector","company","do","who are","about","product","platform"],
+     en:{a:"OpticVector AI is a modular software house for local government. We build two compliance-native modules: TRAIGA Auditor for AI-governance compliance, and GovAssist AI, a grounded citizen concierge with an optional avatar. Our focus is the government that consumes AI, not the labs that build it.",s:{t:"The platform",h:"#products"}},
+     es:{a:"OpticVector AI es una casa de software modular para gobiernos locales. Construimos dos módulos: TRAIGA Auditor para el cumplimiento de gobernanza de IA, y GovAssist AI, un concierge ciudadano fundamentado con avatar opcional. Nos enfocamos en el gobierno que consume IA.",s:{t:"La plataforma",h:"#products"}}},
+    {k:["traiga","auditor","compliance","govern","hb 149","discover","audit","grc"],
+     en:{a:"TRAIGA Auditor is our live AI-governance compliance platform. It discovers the AI a government already runs (via four channels), judges it against Texas HB 149 (TRAIGA), and generates regulator-ready artifacts — AG Response Package, Written Statement of Cure, and a NIST AI RMF Safe-Harbor alignment. It's fail-secure: a failed scan is never reported clean.",s:{t:"TRAIGA Auditor",h:"#products"}},
+     es:{a:"TRAIGA Auditor es nuestra plataforma de cumplimiento de gobernanza de IA, ya en producción. Descubre la IA que un gobierno ya usa, la evalúa según la ley HB 149 de Texas (TRAIGA) y genera los documentos que un regulador pediría.",s:{t:"TRAIGA Auditor",h:"#products"}}},
+    {k:["govassist","concierge","chatbot","assistant","avatar","emma","citizen","resident"],
+     en:{a:"GovAssist AI is our municipal citizen concierge — a white-labeled assistant that answers only from a city's own published content, with independent English and Spanish paths and an optional digital-human avatar. It's accessible-first (WCAG 2.2 AA), zero-PII, and embeds in one line. The assistant you're talking to right now is a demo of it.",s:{t:"GovAssist AI",h:"#concierge"}},
+     es:{a:"GovAssist AI es nuestro concierge ciudadano municipal — un asistente de marca blanca que responde solo con el contenido publicado de la ciudad, con rutas independientes en inglés y español y un avatar digital opcional. Es accesible (WCAG 2.2 AA) y sin datos personales.",s:{t:"GovAssist AI",h:"#concierge"}}},
+    {k:["avatar","digital human","face","uneeq","heygen","video","speak","voice"],
+     en:{a:"The avatar is an optional premium layer over an accessible text and voice concierge — never the only way in. In production it can be driven by a digital-human engine (UneeQ, HeyGen, D-ID, or NVIDIA ACE). This keeps us WCAG-conformant and works on low bandwidth while still competing on spectacle.",s:{t:"Avatar concierge",h:"#concierge"}},
+     es:{a:"El avatar es una capa premium opcional sobre un concierge accesible de texto y voz — nunca la única vía. En producción puede usar un motor de humano digital (UneeQ, HeyGen, D-ID o NVIDIA ACE).",s:{t:"Avatar concierge",h:"#concierge"}}},
+    {k:["accessible","accessibility","wcag","ada","disability","screen reader"],
+     en:{a:"Accessibility is built in, not bolted on. GovAssist ships an accessible text/voice widget that targets WCAG 2.2 AA — keyboard operable, an aria-live transcript, visible focus, and reduced-motion support. The avatar is always optional so no one is forced through a heavy channel.",s:{t:"Compliance-native",h:"#why"}},
+     es:{a:"La accesibilidad está incorporada desde el diseño. GovAssist cumple con WCAG 2.2 AA — operable con teclado, transcripción aria-live y foco visible. El avatar siempre es opcional.",s:{t:"Compliance-native",h:"#why"}}},
+    {k:["privacy","pii","data","store","gdpr","records","secure","security"],
+     en:{a:"Both products are zero-PII by default: the concierge sends only the question and stores nothing personal, and the auditor is an out-of-line observer that never modifies a target system. TRAIGA AI-disclosure is built in so residents always know they're talking to AI.",s:{t:"Zero-PII by default",h:"#why"}},
+     es:{a:"Ambos productos son sin datos personales por defecto: el concierge no guarda nada personal, y el auditor nunca modifica el sistema objetivo. La divulgación de IA de TRAIGA está incorporada.",s:{t:"Sin datos personales",h:"#why"}}},
+    {k:["language","spanish","bilingual","español","translate","english"],
+     en:{a:"GovAssist runs English and Spanish as independent paths — Spanish queries retrieve Spanish content and answer natively, rather than round-tripping statutory text through machine translation. You can switch me to Spanish with the “Español” button above.",s:{t:"GovAssist AI",h:"#products"}},
+     es:{a:"GovAssist ejecuta inglés y español como rutas independientes — las consultas en español recuperan contenido en español y responden de forma nativa, sin traducción automática de textos legales.",s:{t:"GovAssist AI",h:"#products"}}},
+    {k:["why","different","moat","competitor","onetrust","credo","better"],
+     en:{a:"We're built for the government that consumes AI, not the labs that build it. Compliance and answers come from live evidence of what's actually running — discovery-fed, compliance-native, and governance-as-code, so coverage compounds with every city we sweep.",s:{t:"Why OpticVector",h:"#why"}},
+     es:{a:"Estamos hechos para el gobierno que consume IA, no para los laboratorios que la construyen. El cumplimiento surge de evidencia real de lo que está funcionando.",s:{t:"Why OpticVector",h:"#why"}}},
+    {k:["contact","demo","briefing","talk","sales","buy","email","reach"],
+     en:{a:"Happy to set that up. You can request a briefing — we'll scan a public site live and show you AI you may not know is running. Email hello@opticvector.ai or use the “Request a briefing” button.",s:{t:"Request a briefing",h:"#contact"}},
+     es:{a:"Con gusto. Puede solicitar una sesión informativa — escanearemos un sitio público en vivo. Escriba a hello@opticvector.ai o use el botón “Request a briefing”.",s:{t:"Request a briefing",h:"#contact"}}}
+  ];
+  // honest defer for things not published (e.g., pricing) — mirrors the grounding doctrine
+  const DEFER = {
+    en:{a:"That isn't published on this site yet, so I won't guess. Pricing and packaging are still being finalized — the best path is to request a briefing and the team will walk you through it directly.",s:{t:"Request a briefing",h:"#contact"}},
+    es:{a:"Eso todavía no está publicado en este sitio, así que no lo voy a adivinar. Los precios aún se están definiendo — lo mejor es solicitar una sesión informativa.",s:{t:"Request a briefing",h:"#contact"}}
+  };
+  const PRICE_KEYS=["price","cost","pricing","how much","fee","quote","precio","cuesta","cuánto"];
+
+  let lang="en", started=false;
+  const $=(id)=>document.getElementById(id);
+
+  function detectLang(q){
+    const es=/[áéíóúñ¿¡]|(\b(qué|cómo|cuánto|cuál|dónde|por qué|hola|gracias|precio|ciudad|español)\b)/i;
+    return es.test(q)?"es":lang;
+  }
+  function render(){
+    $("vera-disc").textContent=UI[lang].disc;
+    $("vera-input").placeholder=UI[lang].ph;
+    $("vera-send").textContent=UI[lang].send;
+    $("vera-lang").textContent=UI[lang].lang;
+    renderChips();
+  }
+  function renderChips(){
+    const c=$("vera-chips"); c.innerHTML="";
+    UI[lang].chips.forEach(t=>{
+      const b=document.createElement("button"); b.className="vchip"; b.type="button"; b.textContent=t;
+      b.onclick=()=>{ ask(t); };
+      c.appendChild(b);
+    });
+  }
+  function bubble(role,text,src){
+    const log=$("vera-log");
+    const d=document.createElement("div"); d.className="vmsg "+role; d.textContent=text;
+    if(src){ const s=document.createElement("div"); s.className="vsrc";
+      s.innerHTML="<b>"+UI[lang].sources+"</b><a href='"+src.h+"' onclick=\"Vera.close()\">"+src.t+" →</a>"; d.appendChild(s); }
+    log.appendChild(d); log.scrollTop=log.scrollHeight;
+  }
+  function typing(on){
+    let t=document.getElementById("vera-typing");
+    if(on){ if(!t){ t=document.createElement("div"); t.id="vera-typing"; t.className="vtyping"; t.textContent=UI[lang].think; $("vera-log").appendChild(t); $("vera-log").scrollTop=1e9; } }
+    else if(t){ t.remove(); }
+  }
+  function answer(q){
+    const L=detectLang(q); lang=L; render();
+    if(PRICE_KEYS.some(k=>q.toLowerCase().includes(k))) return DEFER[L];
+    let best=null,score=0;
+    KB.forEach(item=>{
+      let s=0; const ql=q.toLowerCase();
+      item.k.forEach(key=>{ if(ql.includes(key)) s+= key.length>4?2:1; });
+      if(s>score){score=s;best=item;}
+    });
+    if(best&&score>0) return best[L];
+    return DEFER[L];
+  }
+  function ask(q){
+    open();
+    if(!q) return;
+    bubble("user",q);
+    typing(true);
+    setTimeout(()=>{ typing(false); const r=answer(q); bubble("bot",r.a,r.s); }, 480);
+  }
+  function open(){
+    $("vera-panel").classList.add("open");
+    if(!started){ started=true; render(); bubble("bot",UI[lang].greet); }
+    $("vera-input").focus();
+  }
+  function close(){ $("vera-panel").classList.remove("open"); }
+  function toggleLang(){ lang=lang==="en"?"es":"en"; render(); bubble("bot",UI[lang].greet); }
+
+  document.addEventListener("DOMContentLoaded",()=>{
+    $("vera-form").addEventListener("submit",(e)=>{ e.preventDefault(); const v=$("vera-input").value.trim(); if(!v)return; $("vera-input").value=""; ask(v); });
+  });
+  return {open,close,ask,toggleLang};
+})();
+</script>
+</body>
+</html>
