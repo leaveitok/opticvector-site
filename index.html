@@ -447,6 +447,13 @@ const Vera = (function(){
   let lang="en", started=false;
   const $=(id)=>document.getElementById(id);
 
+  /* LIVE BACKEND — Vera is now grounded by the real GovAssist API (opticvector
+     tenant): retrieval + cite-or-defer gate run server-side. The local KB below
+     is retained only as an offline fallback if the API is unreachable. */
+  const API_BASE="https://govassist-api-1083768566009.us-central1.run.app";
+  const TENANT="opticvector";
+  function stripMarker(t){ return (t||"").replace(/\s*\[[^\]]+\]\s*$/,"").trim(); }
+
   function detectLang(q){
     const es=/[áéíóúñ¿¡]|(\b(qué|cómo|cuánto|cuál|dónde|por qué|hola|gracias|precio|ciudad|español)\b)/i;
     return es.test(q)?"es":lang;
@@ -490,12 +497,31 @@ const Vera = (function(){
     if(best&&score>0) return best[L];
     return DEFER[L];
   }
-  function ask(q){
+  async function ask(q){
     open();
     if(!q) return;
     bubble("user",q);
     typing(true);
-    setTimeout(()=>{ typing(false); const r=answer(q); bubble("bot",r.a,r.s); }, 480);
+    try{
+      const res=await fetch(API_BASE+"/api/query",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({tenant_id:TENANT,text:q,language:lang})
+      });
+      if(!res.ok) throw new Error("http "+res.status);
+      const data=await res.json();
+      typing(false);
+      if(data.language && data.language!==lang){ lang=data.language; render(); }
+      const src=(data.citations && data.citations.length)
+        ? {t:(data.citations[0].title||data.citations[0].source_id), h:(data.citations[0].url||"#")}
+        : null;
+      bubble("bot", stripMarker(data.text), src);
+    }catch(e){
+      typing(false);
+      // Graceful fallback to the offline knowledge base so Vera never goes dark.
+      const r=answer(q);
+      bubble("bot", r.a, r.s);
+    }
   }
   function open(){
     $("vera-panel").classList.add("open");
