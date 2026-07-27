@@ -172,10 +172,26 @@ footer .legal{border-top:1px solid rgba(255,255,255,.08);margin-top:36px;padding
 .hero-copy{max-width:53ch}
 .hero .cta .btn.lg{padding:15px 28px;font-size:17px;border-radius:12px}
 .btn.primary.lg{box-shadow:0 10px 28px rgba(62,155,224,.38)}
-@media(max-width:900px){
-  .hero-portrait{width:100%;opacity:.28;object-position:center top}
-  .hero.hero-vera::before{background:linear-gradient(180deg,rgba(15,30,45,.5),rgba(15,30,45,.88))}
+@media(max-width:860px){
+  /* IDLE — Olivia full-bleed; copy stacked over a bottom scrim (no side-by-side) */
+  .hero.hero-vera{min-height:86vh}
+  .hero-portrait{width:100%;opacity:1;object-position:center 8%}
+  .hero.hero-vera::before{background:linear-gradient(180deg,rgba(15,30,45,.22) 0%,rgba(15,30,45,.55) 42%,rgba(15,30,45,.94) 82%)}
+  .hero.hero-vera .wrap{display:flex;align-items:flex-end;min-height:86vh;padding:0 20px 42px}
   .hero-copy{max-width:none}
+  .hero h1{font-size:clamp(30px,8.5vw,44px)}
+  .hero p.lead{font-size:16px;margin:14px 0 22px}
+  .hero .cta{flex-direction:column;align-items:stretch;gap:10px}
+  .hero .cta .btn.lg{width:100%;justify-content:center}
+  /* LIVE chat — STACK: Olivia on top, transcript/input below (no overlap) */
+  .hero.hero-vera.live{display:block;min-height:auto}
+  .hero.hero-vera.live::before{display:none}
+  .hero.hero-vera.live .wrap{display:none}
+  .hero-live-video{position:relative;width:100%;height:44vh;opacity:1;object-position:center 12%}
+  .hero-live-ui{position:static}
+  .hero-live-panel{position:relative;left:auto;right:auto;top:auto;bottom:auto;width:100%;min-height:auto;background:#0b1424;justify-content:flex-start;padding:14px 16px 22px;gap:9px}
+  .hlp-log{max-height:38vh}
+  .hero-end{position:fixed;top:10px;right:10px;z-index:1000;padding:9px 16px;font-size:14px}
 }
 .vp-stage{position:relative;background:#0b1020;display:none}
 .vp-stage.on{display:block}
@@ -201,10 +217,7 @@ footer .legal{border-top:1px solid rgba(255,255,255,.08);margin-top:36px;padding
 .hlp-form input{flex:1;padding:12px 13px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:#fff;border-radius:10px;font-size:14px;font-family:inherit;min-height:46px}
 .hlp-form input::placeholder{color:#8ea3ba}
 .hlp-form button{background:var(--blue);color:#fff;border:none;border-radius:10px;padding:0 18px;font-weight:600;cursor:pointer;min-height:46px;font-family:inherit}
-@media(max-width:900px){
-  .hero-live-video{width:100%;opacity:.5}
-  .hero-live-panel{width:100%;background:linear-gradient(180deg,rgba(11,16,32,.35),rgba(11,16,32,.92) 45%)}
-}
+/* (mobile hero rules consolidated into the max-width:860px block above) */
 
 .hlp-log .vmsg{max-width:100%;font-size:13.5px;line-height:1.45}
 .hlp-log .vmsg.bot{background:#eef3f9;color:#0f1e2d;border:none}
