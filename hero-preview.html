@@ -600,10 +600,19 @@ const Vera = (function(){
     $("vera-form").addEventListener("submit",(e)=>{ e.preventDefault(); const v=$("vera-input").value.trim(); if(!v)return; $("vera-input").value=""; ask(v); });
     const hf=$("hero-form"); if(hf) hf.addEventListener("submit",(e)=>{ e.preventDefault(); const v=$("hero-input").value.trim(); if(!v)return; $("hero-input").value=""; heroBubble("user",v); speakGrounded(v); });
     preparing=prepareAvatar();   // warm the avatar client on load so the click can stream instantly (autoplay needs the gesture)
+    document.addEventListener("visibilitychange",()=>{ if(document.hidden && heroLive) endAvatar(); });   // left the tab -> stop minutes
+    window.addEventListener("beforeunload",()=>{ try{ if(anam && anam.stopStreaming) anam.stopStreaming(); }catch(_){} });
   });
   // ===== Anam avatar — HERO TAKEOVER (Amarillo-style), with End =====
   const ANAM_SDK="https://esm.sh/@anam-ai/js-sdk";
   let anam=null, anamReady=false, heroLive=false, lastUserId=null, preparing=null;
+  const IDLE_MS=45000;            // stop the stream after 45s of no interaction (protects free minutes)
+  let idleTimer=null;
+  function touchActivity(){
+    if(idleTimer) clearTimeout(idleTimer);
+    if(!heroLive) return;
+    idleTimer=setTimeout(()=>{ heroStatus(lang==="es"?"Sesión finalizada por inactividad.":"Session ended after inactivity."); endAvatar(); }, IDLE_MS);
+  }
   function heroStatus(t){ const el=$("hero-status"); if(el) el.textContent=t||""; }
   function heroBubble(role,text,src){
     const log=$("hero-log"); if(!log) return;
@@ -630,6 +639,7 @@ const Vera = (function(){
     }catch(e){ anamReady=false; return false; }
   }
   async function speakGrounded(q){       // OUR grounded answer -> transcript + avatar voice
+    touchActivity();
     heroStatus(lang==="es"?"Pensando…":"Thinking…");
     try{
       const res=await fetch(API_BASE+"/api/query",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tenant_id:TENANT,text:q,language:lang})});
@@ -650,6 +660,7 @@ const Vera = (function(){
     const ui=$("vera-live-ui"); if(ui) ui.setAttribute("aria-hidden","false");
     const log=$("hero-log"); if(log && !log.childElementCount) heroBubble("bot", UI[lang].greet);
     const go=()=>{
+      touchActivity();
       heroStatus(lang==="es"?"En vivo — hable o escriba abajo.":"Live — speak, or type below.");
       anam.streamToVideoElement("vera-live").catch(()=>{ heroStatus(lang==="es"?"Toque “Chat with Vera” otra vez para el video.":"Tap “Chat with Vera” again to start the video."); });
     };
@@ -661,6 +672,7 @@ const Vera = (function(){
   }
   async function endAvatar(){
     heroLive=false;
+    if(idleTimer){ clearTimeout(idleTimer); idleTimer=null; }
     try{ if(anam && anam.stopStreaming) await anam.stopStreaming(); }catch(_){}
     anam=null; anamReady=false; lastUserId=null;
     const hero=document.getElementById("top"); if(hero) hero.classList.remove("live");
