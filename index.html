@@ -128,7 +128,7 @@ footer .legal{border-top:1px solid rgba(255,255,255,.08);margin-top:36px;padding
 .preview-note{background:#3E9BE0;color:#0b1622;text-align:center;font-size:12.5px;font-weight:600;padding:7px 12px}
 
 /* ================= CONCIERGE WIDGET ================= */
-#vera-launch{position:fixed;right:22px;bottom:22px;z-index:1000;display:flex;align-items:center;gap:11px;background:var(--navy);color:#fff;border:none;border-radius:40px;padding:10px 20px 10px 12px;box-shadow:0 10px 30px rgba(15,30,45,.35);cursor:pointer;font-family:inherit;font-weight:600;font-size:15px}
+#vera-launch{display:none!important;position:fixed;right:22px;bottom:22px;z-index:1000;align-items:center;gap:11px;background:var(--navy);color:#fff;border:none;border-radius:40px;padding:10px 20px 10px 12px;box-shadow:0 10px 30px rgba(15,30,45,.35);cursor:pointer;font-family:inherit;font-weight:600;font-size:15px}
 #vera-launch:hover{background:var(--navy-2)}
 #vera-launch:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
 .v-ava{width:38px;height:38px;border-radius:50%;flex:none;position:relative;background:radial-gradient(circle at 35% 30%,#3E9BE0,#1E5C8C 70%);display:flex;align-items:center;justify-content:center}
@@ -183,15 +183,8 @@ footer .legal{border-top:1px solid rgba(255,255,255,.08);margin-top:36px;padding
   .hero p.lead{font-size:16px;margin:14px 0 22px}
   .hero .cta{flex-direction:column;align-items:stretch;gap:10px}
   .hero .cta .btn.lg{width:100%;justify-content:center}
-  /* LIVE chat — STACK: Olivia on top, transcript/input below (no overlap) */
-  .hero.hero-vera.live{display:block;min-height:auto}
-  .hero.hero-vera.live::before{display:none}
-  .hero.hero-vera.live .wrap{display:none}
-  .hero-live-video{position:relative;width:100%;height:44vh;opacity:1;object-position:center 12%}
-  .hero-live-ui{position:static}
-  .hero-live-panel{position:relative;left:auto;right:auto;top:auto;bottom:auto;width:100%;min-height:auto;background:#0b1424;justify-content:flex-start;padding:14px 16px 22px;gap:9px}
-  .hlp-log{max-height:38vh}
-  .hero-end{position:fixed;top:10px;right:10px;z-index:1000;padding:9px 16px;font-size:14px}
+  /* hide the top-nav CTA on mobile — it eats real estate; still available in-page */
+  .nav .navcta{display:none}
 }
 .vp-stage{position:relative;background:#0b1020;display:none}
 .vp-stage.on{display:block}
@@ -224,6 +217,22 @@ footer .legal{border-top:1px solid rgba(255,255,255,.08);margin-top:36px;padding
 .hlp-log .vmsg.user{background:var(--blue);color:#fff}
 .hlp-log .vsrc b{color:#5b6b7a}
 .hlp-log .vsrc a{color:var(--blue-d)}
+
+/* ===== MOBILE live takeover — placed LAST so it wins the cascade over the
+   desktop live rules above (equal specificity, later source order). On a phone,
+   entering a call becomes a full-screen fixed panel: Olivia on top, transcript
+   + input filling the rest, so the video always renders instead of being lost
+   behind the page. ===== */
+@media(max-width:860px){
+  .hero.hero-vera.live{position:fixed;inset:0;z-index:1500;display:flex;flex-direction:column;min-height:0;background:#0b1424;overflow-y:auto}
+  .hero.hero-vera.live::before,.hero.hero-vera.live::after{display:none}
+  .hero.hero-vera.live .wrap{display:none}
+  .hero.hero-vera.live .hero-live-video{position:relative;top:auto;right:auto;width:100%;height:42vh;flex:0 0 auto;opacity:1;object-position:center 12%}
+  .hero.hero-vera.live .hero-live-ui{position:static;display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+  .hero.hero-vera.live .hero-live-panel{position:relative;left:auto;right:auto;top:auto;bottom:auto;width:100%;flex:1 1 auto;min-height:0;background:#0b1424;justify-content:flex-start;padding:14px 16px 20px;gap:9px}
+  .hero.hero-vera.live .hlp-log{flex:1 1 auto;max-height:none;min-height:0}
+  .hero.hero-vera.live .hero-end{position:fixed;top:12px;right:12px;z-index:1600;padding:9px 16px;font-size:14px}
+}
 </style>
 </head>
 <body>
