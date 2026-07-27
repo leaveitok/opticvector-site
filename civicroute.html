@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CivicRoute — 311 avatar intake (Carl)</title>
+<style>
+  :root{--navy:#0F1E2D;--navy-2:#16304a;--amber:#F2A900;--amber-d:#b97e00;--ink:#0f1e2d;--mut:#5b6b7a;--line:#e4e9ee;--bg:#f6f8fa;--ok:#1a7f5a;--warn:#b45309;--blue-d:#1E5C8C}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.5}
+  .ribbon{background:var(--warn);color:#fff;text-align:center;font-size:12.5px;font-weight:700;padding:6px 12px}
+  header.top{background:var(--navy);color:#fff;padding:15px 20px;display:flex;align-items:center;gap:13px;flex-wrap:wrap}
+  .logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--amber),var(--amber-d));display:flex;align-items:center;justify-content:center;font-size:19px;flex:none}
+  header.top h1{font-size:17px;margin:0;font-weight:700}
+  header.top .sub{color:#ffd98a;font-size:12.5px;margin-top:2px}
+  .disc{margin-left:auto;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.16);color:#ffe6b3;font-size:11.5px;padding:6px 10px;border-radius:8px;max-width:360px}
+  .wrap{max-width:1120px;margin:0 auto;padding:22px 20px 60px;display:grid;grid-template-columns:.9fr 1.1fr;gap:22px}
+  @media(max-width:860px){.wrap{grid-template-columns:1fr}}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 1px 2px rgba(15,30,45,.04)}
+  h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin:0 0 12px}
+  /* avatar stage */
+  .stage{position:relative;background:#0b1424;border-radius:12px;overflow:hidden;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center}
+  #v311-video{width:100%;height:100%;object-fit:cover;background:#0b1424;display:none}
+  .stage.live #v311-video{display:block}
+  .idle-loop{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 10%}
+  .stage.live .idle-loop{display:none}
+  .stage .idle{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(180deg,rgba(11,20,36,0),rgba(11,20,36,.85));color:#fff;text-align:center;padding:18px 14px 12px;font-size:14px}
+  .stage.live .idle{display:none}
+  .stage .end{position:absolute;top:10px;right:10px;background:#c0392b;color:#fff;border:none;border-radius:22px;padding:8px 15px;font-weight:700;font-size:13px;cursor:pointer;display:none}
+  .stage.live .end{display:block}
+  .status{font-size:12.5px;color:var(--mut);min-height:16px;margin:8px 2px}
+  .log{max-height:150px;overflow-y:auto;display:flex;flex-direction:column;gap:7px;margin-top:8px}
+  .msg{max-width:92%;padding:8px 11px;border-radius:11px;font-size:13px}
+  .msg.bot{align-self:flex-start;background:#eef3f9;color:#0f1e2d}
+  .msg.user{align-self:flex-end;background:var(--navy);color:#fff}
+  .btn{background:var(--amber);color:#241a00;border:none;border-radius:10px;padding:12px 18px;font-weight:800;cursor:pointer;font:inherit;min-height:46px}
+  .btn:hover{background:var(--amber-d);color:#fff}
+  .btn.ghost{background:#eef3f9;color:var(--navy);font-weight:700}
+  .btn.sm{padding:8px 12px;min-height:0;font-size:13px}
+  label{display:block;font-weight:600;font-size:13.5px;margin:13px 0 6px}
+  textarea,input[type=text],select{width:100%;padding:11px 12px;border:1px solid #c8d0da;border-radius:10px;font:inherit;background:#fff}
+  textarea{min-height:70px;resize:vertical}
+  textarea:focus,input:focus,select:focus{outline:2px solid var(--amber);border-color:var(--amber)}
+  .row{display:flex;gap:10px}.row>*{flex:1}
+  .hint{font-size:12px;color:var(--mut);margin-top:5px}
+  .pill{display:inline-flex;align-items:center;gap:7px;background:#fdf2e6;color:#8a4b09;border:1px solid #f4dcbd;border-radius:20px;padding:5px 12px;font-size:13px;font-weight:600}
+  .pill.route{background:#eaf3fb;color:#245377;border-color:#d6e6f4}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
+  .chip{background:#eef3f9;border:1px solid #d6e6f4;border-radius:16px;padding:6px 11px;font-size:12.5px;cursor:pointer}
+  .chip:hover{background:#dcecf9}
+  .step{border-top:1px solid var(--line);margin-top:16px;padding-top:4px}
+  .badge{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#241a00;background:var(--amber);border-radius:6px;padding:2px 7px}
+  .conf{font-size:12px;color:var(--mut);margin-left:8px}
+  .consent{display:flex;gap:9px;align-items:flex-start;background:#f4f8fc;border:1px solid #dbe8f4;border-radius:10px;padding:11px 12px;margin-top:12px;font-size:13px}
+  .consent input{margin-top:3px}
+  pre{background:#0b1424;color:#d6e5f5;border-radius:12px;padding:14px;overflow:auto;font-size:12px;line-height:1.5;margin:0}
+  pre .k{color:#ffd98a}
+  .ok-box{background:#eafaf3;border:1px solid #bfe8d4;border-radius:12px;padding:13px;margin-bottom:12px}
+  .ok-box b{color:var(--ok)}
+  .muted-note{font-size:12px;color:var(--mut);margin-top:12px;border-top:1px dashed var(--line);padding-top:12px}
+  .hide{display:none}
+</style>
+</head>
+<body>
+<div class="ribbon">PROTOTYPE — hard-hat “Carl” streams from our backend (tenant <b>opticvector-311</b>); the Open311 endpoint is simulated. Uses free Anam minutes when live.</div>
+<header class="top">
+  <div class="logo">⛑️</div>
+  <div>
+    <h1>CivicRoute</h1>
+    <div class="sub">City 311 intake — talk to Carl or type it; he files a governed request into the work-order system</div>
+  </div>
+  <div class="disc">⚑ AI intake, disclosed per TRAIGA (HB 149). A person reviews every request. Scoped-PII, with consent.</div>
+</header>
+
+<div class="wrap">
+  <!-- LEFT: the avatar -->
+  <div class="card">
+    <h2>Your intake assistant</h2>
+    <div class="stage" id="stage">
+      <video class="idle-loop" autoplay muted loop playsinline poster="hardhat-idle.jpg"><source src="hardhat-idle.mp4" type="video/mp4"></video>
+      <video id="v311-video" autoplay playsinline></video>
+      <div class="idle" id="idle"><div><b>Carl</b> — public-works intake</div><div class="hint" style="color:#cfe0ff">Tap “Talk to Carl” to start, or just use the form on the right →</div></div>
+      <button class="end" id="endBtn" type="button">End call</button>
+    </div>
+    <div class="status" id="status"></div>
+    <div class="row">
+      <button class="btn" id="startBtn" type="button">▶ Talk to Carl</button>
+      <button class="btn ghost" id="skipBtn" type="button">Just use the form</button>
+    </div>
+    <div class="log" id="log"></div>
+    <div class="muted-note">Carl is the face; our governed backend is the brain. He does voice + speech-to-text; classification and the Open311 request are ours. Say what happened and it fills the form on the right.</div>
+  </div>
+
+  <!-- RIGHT: the intake -> Open311 -->
+  <div class="card">
+    <h2>Report details → Open311</h2>
+    <label for="report">What would you like to report?</label>
+    <textarea id="report" placeholder="e.g. Water is bubbling up in the street in front of 401 Main St"></textarea>
+    <div class="chips" id="examples">
+      <button class="chip" type="button">Water gushing out of the street on Elm</button>
+      <button class="chip" type="button">My trash wasn't picked up today</button>
+      <button class="chip" type="button">Big pothole on College St</button>
+      <button class="chip" type="button">Streetlight out at the park</button>
+      <button class="chip" type="button">When is my trash day?</button>
+    </div>
+    <div style="margin-top:12px"><button class="btn" id="classifyBtn" type="button">Continue</button></div>
+
+    <div id="after" class="hide">
+      <div class="step">
+        <div id="classout" style="margin-bottom:8px"></div>
+        <label for="svc" style="margin-top:0">Service type (correct it if needed)</label>
+        <select id="svc"></select>
+        <div id="attrs"></div>
+        <label for="addr">Location (address or intersection)</label>
+        <input type="text" id="addr" placeholder="401 Main St" />
+        <div class="row" style="margin-top:6px">
+          <button class="btn ghost sm" id="geoBtn" type="button">📍 Use my location (mock)</button>
+          <div id="coords" class="hint" style="align-self:center"></div>
+        </div>
+        <label for="photo">Photo (optional)</label>
+        <input type="text" id="photo" placeholder="filename, or leave blank" />
+        <div class="hint">Production: photo uploads to our boundary; <b>EXIF stripped, faces/plates redacted</b> before the city sees it.</div>
+        <div class="row" style="margin-top:8px">
+          <div><label for="name" style="margin-top:0">Name (optional)</label><input type="text" id="name" placeholder="optional"></div>
+          <div><label for="contact" style="margin-top:0">Email or phone (optional)</label><input type="text" id="contact" placeholder="for status updates"></div>
+        </div>
+        <div class="consent">
+          <input type="checkbox" id="consent" />
+          <label for="consent" style="margin:0;font-weight:500">I consent to the city collecting this report to create and follow up on a service request, retained per the city's records-retention schedule (Texas Public Information Act).</label>
+        </div>
+        <div style="margin-top:13px"><button class="btn" id="submitBtn" type="button">Submit report →</button><span id="submitErr" class="hint" style="color:#b4322b"></span></div>
+      </div>
+    </div>
+
+    <div id="result" class="hide" style="margin-top:14px"><div class="ok-box"><b>✔ Request created</b><div id="reqid" style="font-size:13px;margin-top:4px"></div></div></div>
+    <div class="step"><h2>Open311 GeoReport v2 request</h2>
+      <div class="hint" style="margin:-6px 0 8px"><code>POST https://311.&lt;city&gt;.gov/requests.json</code> → adapter → <b>Cityworks</b> work order</div>
+      <pre id="payload">Fill in the report to see the request…</pre>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== config ===== */
+const API_BASE="https://govassist-api-1083768566009.us-central1.run.app";
+const TENANT="opticvector-311";
+const ANAM_SDK="https://esm.sh/@anam-ai/js-sdk";
+const $ = s => document.getElementById(s);
+
+/* ===== Open311 intake (mock classifier + payload builder) ===== */
+const CATALOG=[
+  {code:"WATER-LEAK",name:"Water leak / main break",group:"Utilities",type:"realtime",keywords:["water","leak","gushing","bubbling","main break","flooding","hydrant"],attributes:[{code:"severity",label:"How bad is it?",values:["Slow seep","Steady flow","Gushing / flooding"]}]},
+  {code:"SEWER-BACKUP",name:"Sewer backup / odor",group:"Utilities",type:"realtime",keywords:["sewer","backup","drain","smell","odor","manhole"]},
+  {code:"POTHOLE",name:"Pothole / street damage",group:"Streets",type:"realtime",keywords:["pothole","pot hole","road","street","pavement","asphalt","crack"]},
+  {code:"TREE-LIMB",name:"Downed tree / limb",group:"Streets & Parks",type:"realtime",keywords:["tree","limb","branch","fallen","downed","blocking"]},
+  {code:"STREETLIGHT",name:"Streetlight outage",group:"Utilities",type:"realtime",keywords:["streetlight","street light","light","lamp","dark","out","flickering"]},
+  {code:"TRASH-MISSED",name:"Missed trash / recycling pickup",group:"Solid Waste",type:"realtime",keywords:["trash","garbage","recycling","recycle","pickup","pick up","bin","cart","yard waste","missed"],attributes:[{code:"cart_type",label:"Which cart?",values:["Trash","Recycling","Yard waste"]}]},
+  {code:"GRAFFITI",name:"Graffiti removal",group:"Parks",type:"realtime",keywords:["graffiti","tagging","spray paint","vandalism"]}
+];
+const QUESTION_HINTS=["how much","how do i","when is","what time","hours","cost","price","pay my","my bill","balance","due","phone number","where do i","trash day"];
+const DECISIVE_QUESTION=["how much","how do i","when is","what time","hours","cost","price","my bill","balance","due","trash day"];
+let current=null;
+
+function classify(text){
+  const t=(text||"").toLowerCase();
+  let qHits=QUESTION_HINTS.filter(h=>t.includes(h)).length;
+  const decisive=DECISIVE_QUESTION.some(h=>t.includes(h));
+  const scored=CATALOG.map(s=>{let sc=0;s.keywords.forEach(k=>{if(t.includes(k))sc+=(k.length>4?2:1);});return{s,sc};}).sort((a,b)=>b.sc-a.sc);
+  const best=scored[0];
+  if(decisive||qHits>=2||(qHits>=1&&best.sc<=1)) return {route:"concierge"};
+  if(best.sc<=0) return {route:"unknown"};
+  return {route:"report",service:best.s,confidence:Math.min(0.97,0.55+0.12*best.sc)};
+}
+function renderOptions(code){const sel=$("svc");sel.innerHTML="";CATALOG.forEach(s=>{const o=document.createElement("option");o.value=s.code;o.textContent=`${s.name} · ${s.group} (${s.code})`;if(s.code===code)o.selected=true;sel.appendChild(o);});}
+function renderAttrs(){const box=$("attrs");box.innerHTML="";if(!current||!current.attributes)return;current.attributes.forEach(a=>{const l=document.createElement("label");l.textContent=a.label;const s=document.createElement("select");s.id="attr-"+a.code;a.values.forEach(v=>{const o=document.createElement("option");o.textContent=v;o.value=v;s.appendChild(o);});s.addEventListener("change",buildPayload);box.appendChild(l);box.appendChild(s);});}
+function onClassify(){
+  const text=$("report").value.trim(); if(!text){$("report").focus();return;}
+  const r=classify(text); $("after").classList.remove("hide"); const out=$("classout");
+  const reportOnly=[$("svc").parentElement, $("submitBtn").parentElement];
+  if(r.route==="concierge"){
+    out.innerHTML=`<span class="pill route">↩ That's a question, not a report</span><p class="hint">Carl would answer this from the city's published info (cite-or-defer) — it doesn't become a work order. Same brain, different job.</p>`;
+    $("svc").parentElement.classList.add("hide"); $("submitBtn").parentElement.classList.add("hide");
+    $("payload").textContent="// No Open311 request — routed to the grounded concierge (question, not a report).";
+    speakLine(pickVoice("question")); return;
+  }
+  $("svc").parentElement.classList.remove("hide"); $("submitBtn").parentElement.classList.remove("hide");
+  if(r.route==="unknown"){current=CATALOG[0];out.innerHTML=`<span class="pill route">? Pick the closest type below</span>`;}
+  else{current=r.service;out.innerHTML=`<span class="pill">✓ ${current.name}</span><span class="conf">confidence ${(r.confidence*100|0)}% · code <b>${current.code}</b></span>`;}
+  renderOptions(current.code); renderAttrs(); buildPayload();
+}
+function currentAttrs(){const o={};if(current&&current.attributes)current.attributes.forEach(a=>{const el=$("attr-"+a.code);if(el)o[a.code]=el.value;});return o;}
+function buildPayload(){
+  if(!current)return;
+  const p={api_key:"«server-side secret»",service_code:current.code,description:$("report").value.trim()||"(resident description)"};
+  if($("coords").dataset.lat){p.lat=$("coords").dataset.lat;p.long=$("coords").dataset.lng;}
+  const addr=$("addr").value.trim(); if(addr)p.address_string=addr;
+  const at=currentAttrs(); Object.keys(at).forEach(k=>p["attribute["+k+"]"]=at[k]);
+  const photo=$("photo").value.trim(); if(photo)p.media_url="https://boundary.opticvector.ai/media/«redacted»/"+encodeURIComponent(photo);
+  if($("consent").checked){const n=$("name").value.trim();const c=$("contact").value.trim();if(n){const pp=n.split(" ");p.first_name=pp[0];if(pp.length>1)p.last_name=pp.slice(1).join(" ");}if(c){if(c.includes("@"))p.email=c;else p.phone=c;}}
+  $("payload").innerHTML=JSON.stringify(p,null,2).replace(/"service_code"/,'"<span class="k">service_code</span>"').replace(/"description"/,'"<span class="k">description</span>"');
+}
+function pad(n){return n<10?"0"+n:""+n;}
+function submit(){
+  $("submitErr").textContent="";
+  if(!$("consent").checked){$("submitErr").textContent="  Please check consent to submit.";return;}
+  buildPayload();
+  const now=new Date(); const eta=new Date(now.getTime()+(current.type==="batch"?5:2)*864e5);
+  const id="LWV-"+now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+"-"+Math.floor(1000+Math.random()*9000);
+  $("result").classList.remove("hide");
+  $("reqid").innerHTML=`Open311 <code>service_request_id</code>: <b>${id}</b> · status <b>open</b><br><span class="hint">Simulated · expected by ${eta.toLocaleDateString()} · ${current.group}. A real adapter now creates the Cityworks work order and returns its case number.</span>`;
+  const resp={service_requests:[{service_request_id:id,status:"open",service_name:current.name,service_code:current.code,requested_datetime:now.toISOString(),expected_datetime:eta.toISOString(),agency_responsible:current.group}]};
+  $("payload").innerHTML=$("payload").innerHTML+"\n\n<span style='color:#9fb6cf'>// ← 201 Created the city returns:</span>\n"+JSON.stringify(resp,null,2);
+  speakLine(`Thanks — I've filed that as request ${id} for ${current.name}. ${$("contact").value.trim()&&$("consent").checked?"We'll send you status updates.":"You can track it with that request ID."}`);
+  $("result").scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function pickVoice(kind){
+  if(kind==="question") return "That sounds like a question rather than a report — I can answer that from the city's published information instead of opening a work order.";
+  return "";
+}
+
+/* ===== Anam avatar (hard-hat Carl), minute-safe ===== */
+let anam=null, anamReady=false, live=false, lastUserId=null, preparing=null, greeting={en:"Hi, I'm Carl with city public works. What would you like to report today?"};
+const IDLE_MS=45000; let idleTimer=null, hideTimer=null;
+function status(t){$("status").textContent=t||"";}
+function bubble(role,text){const l=$("log");const d=document.createElement("div");d.className="msg "+role;d.textContent=text;l.appendChild(d);l.scrollTop=l.scrollHeight;}
+function touch(){if(idleTimer)clearTimeout(idleTimer);if(!live)return;idleTimer=setTimeout(()=>{status("Ended after inactivity.");endCall();},IDLE_MS);}
+async function prepareAvatar(){
+  try{
+    const r=await fetch(API_BASE+"/api/avatar/session",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tenant_id:TENANT})});
+    const sess=(await r.json()).avatar_session||{};
+    if(sess.greeting) greeting=sess.greeting;
+    if(sess.engine!=="anam"||!sess.session_token) return false;
+    const mod=await import(ANAM_SDK);
+    anam=mod.createClient(sess.session_token);
+    anam.addListener(mod.AnamEvent.MESSAGE_HISTORY_UPDATED,(messages)=>{
+      const arr=Array.isArray(messages)?messages:(messages&&messages.messages)||[];
+      const last=arr[arr.length-1];
+      if(!last||(last.role||"").toLowerCase()!=="user")return;
+      const key=last.id||last.content; if(key===lastUserId)return; lastUserId=key;
+      const text=last.content||""; if(!text)return;
+      bubble("user",text); onSpeech(text);
+    });
+    anamReady=true; return true;
+  }catch(e){ anamReady=false; return false; }
+}
+function speakLine(text){ if(!text)return; touch(); bubble("bot",text); if(anam){try{const ts=anam.createTalkMessageStream();ts.streamMessageChunk(text,false);ts.endMessage();}catch(_){ if(anam.talk) anam.talk(text);} } }
+function onSpeech(text){ $("report").value=text; onClassify(); }   // spoken report fills the form
+function startCall(){
+  const st=$("stage"); st.classList.add("live"); live=true; $("startBtn").disabled=true; $("idle").style.display="none";
+  const go=()=>{ touch(); status("Live — speak, or type on the right.");
+    anam.streamToVideoElement("v311-video").then(()=>{const v=$("v311-video");if(v)v.play().catch(()=>{}); speakLine((greeting&&greeting.en)||greeting);}).catch(()=>{status("Tap “Talk to Carl” again to start the video.");});
+  };
+  if(anam&&anamReady){ go(); }
+  else { status("Connecting…"); (preparing||(preparing=prepareAvatar())).then(ok=>{ if(ok)go(); else { status("Avatar unavailable — use the form; it works without video."); $("startBtn").disabled=false; live=false; $("stage").classList.remove("live"); $("idle").style.display=""; } }); }
+}
+async function endCall(){
+  live=false; if(idleTimer){clearTimeout(idleTimer);idleTimer=null;}
+  try{ if(anam&&anam.stopStreaming) await anam.stopStreaming(); }catch(_){}
+  const v=$("v311-video"); if(v&&v.srcObject){try{v.srcObject.getTracks().forEach(t=>t.stop());}catch(_){}v.srcObject=null;}
+  anam=null;anamReady=false;lastUserId=null;
+  $("stage").classList.remove("live"); $("idle").style.display=""; $("startBtn").disabled=false; status("");
+  preparing=prepareAvatar();  // warm a fresh client for next time
+}
+
+/* ===== wiring ===== */
+document.querySelectorAll("#examples .chip").forEach(c=>c.addEventListener("click",()=>{$("report").value=c.textContent;onClassify();}));
+$("classifyBtn").addEventListener("click",onClassify);
+$("svc").addEventListener("change",()=>{current=CATALOG.find(s=>s.code===$("svc").value);renderAttrs();buildPayload();});
+["report","addr","photo","name","contact"].forEach(id=>$(id).addEventListener("input",buildPayload));
+$("consent").addEventListener("change",buildPayload);
+$("geoBtn").addEventListener("click",()=>{const lat=(33.0462+(Math.random()-.5)*.02).toFixed(6),lng=(-96.9942+(Math.random()-.5)*.02).toFixed(6);$("coords").dataset.lat=lat;$("coords").dataset.lng=lng;$("coords").textContent=`lat ${lat}, long ${lng} (mock)`;buildPayload();});
+$("submitBtn").addEventListener("click",submit);
+$("startBtn").addEventListener("click",startCall);
+$("skipBtn").addEventListener("click",()=>{$("report").focus();});
+$("endBtn").addEventListener("click",endCall);
+document.addEventListener("DOMContentLoaded",()=>{ preparing=prepareAvatar(); });   // warm on load so the click streams instantly
+document.addEventListener("visibilitychange",()=>{ if(document.hidden){ if(live&&!hideTimer)hideTimer=setTimeout(()=>{if(document.hidden&&live)endCall();},30000);} else { if(hideTimer){clearTimeout(hideTimer);hideTimer=null;} } });
+window.addEventListener("beforeunload",()=>{ try{ if(anam&&anam.stopStreaming) anam.stopStreaming(); }catch(_){} });
+</script>
+</body>
+</html>

@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>OpticVector AI — Public-sector AI governance & concierge software</title>
-<meta name="description" content="OpticVector AI builds compliance-native software for local government: TRAIGA Auditor for AI-governance compliance, and GovAssist AI, a grounded bilingual citizen concierge with an optional digital-human avatar." />
+<meta name="description" content="OpticVector AI builds compliance-native software for local government: TRAIGA Auditor for AI-governance compliance, GovAssist AI, a grounded bilingual citizen concierge, and CivicRoute, an avatar-led 311 citizen-request intake — all on one governed backbone." />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-170 -170 340 340'%3E%3Ccircle r='150' fill='%230F1E2D'/%3E%3Cpath d='M -58 -40 L 0 74 L 58 -40' fill='none' stroke='%23fff' stroke-width='34' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -71,7 +71,8 @@ section.block{padding:88px 0}
 .sec-head p{color:var(--mut);font-size:17px;margin:16px 0 0}
 
 /* PRODUCTS */
-.prod-grid{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:44px}
+.prod-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:44px}
+@media(max-width:1040px){.prod-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:880px){.prod-grid{grid-template-columns:1fr}}
 .card{border:1px solid var(--line);border-radius:18px;padding:34px;background:#fff;display:flex;flex-direction:column;transition:.18s}
 .card:hover{box-shadow:0 14px 40px rgba(15,30,45,.08);transform:translateY(-2px)}
@@ -312,7 +313,7 @@ footer .legal{border-top:1px solid rgba(255,255,255,.08);margin-top:36px;padding
   <div class="wrap">
     <div class="sec-head">
       <p class="eyebrow">The platform</p>
-      <h2>Two modules. One governance backbone.</h2>
+      <h2>Three modules. One governance backbone.</h2>
       <p>OpticVector AI builds for the government that <em>consumes</em> AI — not the labs that build it. Each module ships compliance-native and is designed to reinforce the other.</p>
     </div>
     <div class="prod-grid">
@@ -343,6 +344,20 @@ footer .legal{border-top:1px solid rgba(255,255,255,.08);margin-top:36px;padding
           <li>Zero-PII, one-line embed as a Web Component — drops into any CMS with no style collisions.</li>
         </ul>
         <div class="foot"><button class="btn dark" onclick="Vera.openAvatar('en','What is GovAssist AI?')">Ask Olivia about GovAssist →</button></div>
+      </div>
+
+      <div class="card">
+        <span class="status dev">● In development</span>
+        <h3>CivicRoute</h3>
+        <div class="tag">311 citizen-request intake · avatar-led</div>
+        <p class="d">An avatar-led 311 front door: a resident describes an issue to Carl, our hard-hat intake assistant, and it becomes a governed, routable service request — no form maze, no call to city hall.</p>
+        <ul>
+          <li>Conversational intake (speak or type) classifies the report and builds a portable <b>Open311</b> request, then a thin adapter routes it to the city's work-order system (e.g. Cityworks).</li>
+          <li>Departments with no work-order system get a lightweight governed queue instead — nothing falls through the cracks.</li>
+          <li>Scoped-PII by design: consent, retention, and photo EXIF/face redaction built in; a person reviews every request.</li>
+          <li>The wedge legacy 311 vendors don't have — a real digital-human intake face on the same governed backbone.</li>
+        </ul>
+        <div class="foot"><a class="btn dark" href="civicroute.html">▶&nbsp;&nbsp;Demo the avatar intake →</a></div>
       </div>
 
     </div>
@@ -446,6 +461,7 @@ footer .legal{border-top:1px solid rgba(255,255,255,.08);margin-top:36px;padding
         <h4>Products</h4>
         <a href="#products">TRAIGA Auditor</a>
         <a href="#products">GovAssist AI</a>
+        <a href="civicroute.html">CivicRoute (311)</a>
         <a href="#concierge">Avatar concierge</a>
       </div>
       <div>
