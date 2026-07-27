@@ -58,6 +58,9 @@
   .ok-box{background:#eafaf3;border:1px solid #bfe8d4;border-radius:12px;padding:13px;margin-bottom:12px}
   .ok-box b{color:var(--ok)}
   .muted-note{font-size:12px;color:var(--mut);margin-top:12px;border-top:1px dashed var(--line);padding-top:12px}
+  #map{width:100%;height:280px;border-radius:10px;border:1px solid #c8d0da;margin-top:6px;background:#eef3f9}
+  .maphint{font-size:12px;color:var(--mut);margin-top:6px;display:flex;align-items:center;gap:6px}
+  .maphint b{color:var(--blue-d)}
   .hide{display:none}
 </style>
 </head>
@@ -114,8 +117,12 @@
         <label for="addr">Location (address or intersection)</label>
         <input type="text" id="addr" placeholder="401 Main St" />
         <div class="row" style="margin-top:6px">
-          <button class="btn ghost sm" id="geoBtn" type="button">📍 Use my location (mock)</button>
+          <button class="btn ghost sm" id="geoBtn" type="button">📍 Use my location</button>
           <div id="coords" class="hint" style="align-self:center"></div>
+        </div>
+        <div id="mapwrap" class="hide">
+          <div id="map"></div>
+          <div class="maphint">📍 <span>Drag the pin to the exact spot — <b>this is the location the crew gets</b>. The address updates to match.</span></div>
         </div>
         <label for="photo">Photo (optional)</label>
         <input type="text" id="photo" placeholder="filename, or leave blank" />
@@ -150,6 +157,12 @@
 const API_BASE="https://govassist-api-1083768566009.us-central1.run.app";
 const TENANT="opticvector-311";
 const ANAM_SDK="https://esm.sh/@anam-ai/js-sdk";
+/* Google Maps browser key — public by design, referrer-locked to leaveitok.github.io/*
+   and scoped to Maps JavaScript API + Geocoding API only. */
+const MAPS_KEY="AIzaSyAG0SL-1BCcE0gUW8kVysM87pJh8IOcUaA";
+const CITY_CENTER={lat:33.0462,lng:-96.9942};   // Lewisville, TX
+const GEO_BIAS=", Lewisville, TX";
+let map=null, marker=null, geocoder=null, mapsLoading=null;
 const $ = s => document.getElementById(s);
 
 /* ===== Open311 intake (mock classifier + payload builder) ===== */
@@ -185,6 +198,7 @@ function onClassify(){
   if(r.route==="concierge"){
     out.innerHTML=`<span class="pill route">↩ That's a question, not a report</span><p class="hint">Carl would answer this from the city's published info (cite-or-defer) — it doesn't become a work order. Same brain, different job.</p>`;
     $("svc").parentElement.classList.add("hide"); $("submitBtn").parentElement.classList.add("hide");
+    $("mapwrap").classList.add("hide");
     $("payload").textContent="// No Open311 request — routed to the grounded concierge (question, not a report).";
     speakLine(pickVoice("question")); return;
   }
@@ -192,6 +206,7 @@ function onClassify(){
   if(r.route==="unknown"){current=CATALOG[0];out.innerHTML=`<span class="pill route">? Pick the closest type below</span>`;}
   else{current=r.service;out.innerHTML=`<span class="pill">✓ ${current.name}</span><span class="conf">confidence ${(r.confidence*100|0)}% · code <b>${current.code}</b></span>`;}
   renderOptions(current.code); renderAttrs(); buildPayload();
+  enrichFromBackend(text);   // governed extractor proposes the address; the map confirms it
 }
 function currentAttrs(){const o={};if(current&&current.attributes)current.attributes.forEach(a=>{const el=$("attr-"+a.code);if(el)o[a.code]=el.value;});return o;}
 function buildPayload(){
@@ -207,13 +222,71 @@ function buildPayload(){
 function pad(n){return n<10?"0"+n:""+n;}
 function detectLang(t){ return /[áéíóúñ¿¡]|\b(agua|calle|basura|reporte|fuga|bache|hola|gracias|luz)\b/i.test(t||"")?"es":"en"; }
 
+/* ===== map: candidate address -> confirm pin (extract, then verify) ===== */
+function loadMaps(){
+  if(window.google&&window.google.maps) return Promise.resolve();
+  if(mapsLoading) return mapsLoading;
+  mapsLoading=new Promise((res,rej)=>{
+    window.__mapsReady=()=>res();
+    const s=document.createElement("script");
+    s.src=`https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}&loading=async&callback=__mapsReady`;
+    s.async=true; s.onerror=()=>rej(new Error("maps failed to load"));
+    document.head.appendChild(s);
+  });
+  return mapsLoading;
+}
+async function ensureMap(){
+  $("mapwrap").classList.remove("hide");
+  try{ await loadMaps(); }catch(_){ $("coords").textContent="Map unavailable — type the address instead."; return; }
+  if(map) return;
+  geocoder=new google.maps.Geocoder();
+  map=new google.maps.Map($("map"),{center:CITY_CENTER,zoom:12,mapTypeControl:false,streetViewControl:false,fullscreenControl:false});
+  marker=new google.maps.Marker({map,position:CITY_CENTER,draggable:true,title:"Drag me to the exact spot"});
+  marker.addListener("dragend",()=>{const p=marker.getPosition();setCoords(p.lat(),p.lng());reverseGeocode(p);});
+  map.addListener("click",e=>{marker.setPosition(e.latLng);setCoords(e.latLng.lat(),e.latLng.lng());reverseGeocode(e.latLng);});
+}
+function setCoords(lat,lng){
+  $("coords").dataset.lat=(+lat).toFixed(6); $("coords").dataset.lng=(+lng).toFixed(6);
+  $("coords").textContent=`📍 pin set — lat ${(+lat).toFixed(5)}, long ${(+lng).toFixed(5)}`;
+  buildPayload();
+}
+function reverseGeocode(latlng){
+  if(!geocoder) return;
+  geocoder.geocode({location:latlng},(res,st)=>{ if(st==="OK"&&res&&res[0]){ $("addr").value=res[0].formatted_address; buildPayload(); } });
+}
+async function geocodeAddress(addr){
+  await ensureMap();
+  if(!geocoder) return false;
+  return new Promise(r=>{
+    geocoder.geocode({address:addr+GEO_BIAS},(res,st)=>{
+      if(st==="OK"&&res&&res[0]){ const loc=res[0].geometry.location; map.setCenter(loc); map.setZoom(17); marker.setPosition(loc); setCoords(loc.lat(),loc.lng()); r(true); }
+      else r(false);
+    });
+  });
+}
+/* backend /extract is the governed brain: it PROPOSES a candidate address from the
+   free-text description; the map + resident CONFIRM it. Cite-or-defer, applied to intake. */
+async function enrichFromBackend(text){
+  await ensureMap();   // report route -> show the map even before the address resolves
+  try{
+    const r=await fetch(`${API_BASE}/api/cases/${TENANT}/extract`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text})});
+    if(r.ok){
+      const d=await r.json();
+      if(d.address && !$("addr").value.trim()){ $("addr").value=d.address; await geocodeAddress(d.address); }
+    }
+  }catch(_){ /* extraction is best-effort; the resident can always drag the pin */ }
+  buildPayload();
+}
+
 async function submit(){
   $("submitErr").textContent="";
   const text=$("report").value.trim();
   if(!text){$("submitErr").textContent="  Add a description first.";return;}
   if(!$("consent").checked){$("submitErr").textContent="  Please check consent to submit.";return;}
   const channels=[...document.querySelectorAll(".chan:checked")].map(c=>c.value);
-  const body={text, language:detectLang(text), location:$("addr").value.trim()||null, contact:$("contact").value.trim()||null, channels, consent:true};
+  const lat=$("coords").dataset.lat?parseFloat($("coords").dataset.lat):null;
+  const lng=$("coords").dataset.lng?parseFloat($("coords").dataset.lng):null;
+  const body={text, language:detectLang(text), location:$("addr").value.trim()||null, lat, lng, contact:$("contact").value.trim()||null, channels, consent:true};
   $("submitBtn").disabled=true; status("Submitting…");
   try{
     const res=await fetch(`${API_BASE}/api/cases/${TENANT}/intake`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
@@ -321,7 +394,15 @@ $("classifyBtn").addEventListener("click",onClassify);
 $("svc").addEventListener("change",()=>{current=CATALOG.find(s=>s.code===$("svc").value);renderAttrs();buildPayload();});
 ["report","addr","photo","name","contact"].forEach(id=>$(id).addEventListener("input",buildPayload));
 $("consent").addEventListener("change",buildPayload);
-$("geoBtn").addEventListener("click",()=>{const lat=(33.0462+(Math.random()-.5)*.02).toFixed(6),lng=(-96.9942+(Math.random()-.5)*.02).toFixed(6);$("coords").dataset.lat=lat;$("coords").dataset.lng=lng;$("coords").textContent=`lat ${lat}, long ${lng} (mock)`;buildPayload();});
+$("geoBtn").addEventListener("click",async ()=>{
+  await ensureMap();
+  if(!navigator.geolocation){ $("coords").textContent="Geolocation unavailable — drag the pin instead."; return; }
+  $("coords").textContent="Locating…";
+  navigator.geolocation.getCurrentPosition(
+    pos=>{ const loc={lat:pos.coords.latitude,lng:pos.coords.longitude}; if(map){map.setCenter(loc);map.setZoom(17);marker.setPosition(loc);} setCoords(loc.lat,loc.lng); if(window.google) reverseGeocode(new google.maps.LatLng(loc.lat,loc.lng)); },
+    _=>{ $("coords").textContent="Couldn't get your location — drag the pin to the spot."; }
+  );
+});
 $("submitBtn").addEventListener("click",submit);
 $("startBtn").addEventListener("click",startCall);
 $("skipBtn").addEventListener("click",()=>{$("report").focus();});
