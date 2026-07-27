@@ -618,7 +618,14 @@ const Vera = (function(){
     $("vera-form").addEventListener("submit",(e)=>{ e.preventDefault(); const v=$("vera-input").value.trim(); if(!v)return; $("vera-input").value=""; ask(v); });
     const hf=$("hero-form"); if(hf) hf.addEventListener("submit",(e)=>{ e.preventDefault(); const v=$("hero-input").value.trim(); if(!v)return; $("hero-input").value=""; heroBubble("user",v); speakGrounded(v); });
     preparing=prepareAvatar();   // warm the avatar client on load so the click can stream instantly (autoplay needs the gesture)
-    document.addEventListener("visibilitychange",()=>{ if(document.hidden && heroLive) endAvatar(); });   // left the tab -> stop minutes
+    // Stop minutes only if the user is AWAY for a sustained period. A brief hide
+    // (mobile mic-permission prompt, app switch, notification shade) must NOT end
+    // the call — that was dropping mobile users straight back to the site.
+    let hideTimer=null;
+    document.addEventListener("visibilitychange",()=>{
+      if(document.hidden){ if(heroLive && !hideTimer){ hideTimer=setTimeout(()=>{ if(document.hidden && heroLive) endAvatar(); }, 30000); } }
+      else { if(hideTimer){ clearTimeout(hideTimer); hideTimer=null; } }
+    });
     window.addEventListener("beforeunload",()=>{ try{ if(anam && anam.stopStreaming) anam.stopStreaming(); }catch(_){} });
   });
   // ===== Anam avatar — HERO TAKEOVER (Amarillo-style), with End =====
