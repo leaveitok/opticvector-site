@@ -320,7 +320,7 @@ footer .legal{border-top:1px solid rgba(255,255,255,.08);margin-top:36px;padding
           <li>Generates the artifacts a regulator asks for: AG Response Package, Written Statement of Cure, and a Safe-Harbor alignment to a 14-control NIST AI RMF profile.</li>
           <li>Fail-secure by design — a blocked or failed scan is never reported clean.</li>
         </ul>
-        <div class="foot"><button class="btn dark" onclick="Vera.ask('What is TRAIGA Auditor?')">Ask Olivia about TRAIGA Auditor →</button></div>
+        <div class="foot"><button class="btn dark" onclick="Vera.openAvatar('en','What is the TRAIGA Auditor?')">Ask Olivia about TRAIGA Auditor →</button></div>
       </div>
 
       <div class="card">
@@ -334,7 +334,7 @@ footer .legal{border-top:1px solid rgba(255,255,255,.08);margin-top:36px;padding
           <li>Accessible-first: WCAG 2.2 AA text/voice widget is the default; the avatar is an optional premium layer, never the sole channel.</li>
           <li>Zero-PII, one-line embed as a Web Component — drops into any CMS with no style collisions.</li>
         </ul>
-        <div class="foot"><button class="btn dark" onclick="Vera.ask('What is GovAssist AI?')">Ask Olivia about GovAssist →</button></div>
+        <div class="foot"><button class="btn dark" onclick="Vera.openAvatar('en','What is GovAssist AI?')">Ask Olivia about GovAssist →</button></div>
       </div>
 
     </div>
@@ -640,6 +640,10 @@ const Vera = (function(){
   // ===== Anam avatar — HERO TAKEOVER (Amarillo-style), with End =====
   const ANAM_SDK="https://esm.sh/@anam-ai/js-sdk";
   let anam=null, anamReady=false, heroLive=false, lastUserId=null, preparing=null;
+  // Spoken opener (governance-as-code): served by /api/avatar/session from the
+  // tenant config. Fallback keeps her personable if the field is ever absent.
+  let avatarGreeting={en:"Hello, I'm Olivia with OpticVector AI. Would you like me to tell you about us?",
+                      es:"Hola, soy Olivia de OpticVector AI. ¿Le gustaría que le cuente sobre nosotros?"};
   const IDLE_MS=45000;            // stop the stream after 45s of no interaction (protects free minutes)
   let idleTimer=null;
   function touchActivity(){
@@ -659,6 +663,7 @@ const Vera = (function(){
       const r=await fetch(API_BASE+"/api/avatar/session",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tenant_id:TENANT})});
       const sess=(await r.json()).avatar_session||{};
       if(sess.engine!=="anam"||!sess.session_token) return false;
+      if(sess.greeting){ avatarGreeting=sess.greeting; }   // tenant's spoken opener
       const mod=await import(ANAM_SDK);
       anam=mod.createClient(sess.session_token);
       anam.addListener(mod.AnamEvent.MESSAGE_HISTORY_UPDATED,(messages)=>{
@@ -685,18 +690,28 @@ const Vera = (function(){
       if(anam){ try{ const ts=anam.createTalkMessageStream(); ts.streamMessageChunk(clean,false); ts.endMessage(); }catch(_){ if(anam.talk) anam.talk(clean); } }
     }catch(e){ heroStatus(""); heroBubble("bot", lang==="es"?"No pude conectar. Intente de nuevo.":"I couldn't reach the assistant. Please try again."); }
   }
-  function openAvatar(l){          // NOT async: must run inside the click gesture so the avatar (which has audio) can autoplay
+  function speakLine(text){              // a SCRIPTED conversational line (no backend, no citation) — e.g. the opener
+    if(!text) return;
+    touchActivity();
+    heroBubble("bot",text);
+    if(anam){ try{ const ts=anam.createTalkMessageStream(); ts.streamMessageChunk(text,false); ts.endMessage(); }catch(_){ if(anam.talk) anam.talk(text); } }
+  }
+  function afterConnect(seedQ){          // once the video is live: answer the seeded question, or speak the opener
+    if(seedQ){ heroBubble("user",seedQ); speakGrounded(seedQ); }
+    else { speakLine((avatarGreeting&&avatarGreeting[lang])||avatarGreeting.en); }
+  }
+  function openAvatar(l,seedQ){          // NOT async: must run inside the click gesture so the avatar (which has audio) can autoplay
     if(l){ lang=l; }
+    try{ window.scrollTo({top:0,behavior:"smooth"}); }catch(_){ window.scrollTo(0,0); }   // product buttons live down-page; bring the hero into view
     const hero=document.getElementById("top");
     const hd=$("hero-disc"); if(hd) hd.textContent=UI[lang].disc;
     if(hero) hero.classList.add("live");
     heroLive=true;
     const ui=$("vera-live-ui"); if(ui) ui.setAttribute("aria-hidden","false");
-    const log=$("hero-log"); if(log && !log.childElementCount) heroBubble("bot", UI[lang].greet);
     const go=()=>{
       touchActivity();
       heroStatus(lang==="es"?"En vivo — hable o escriba abajo.":"Live — speak, or type below.");
-      anam.streamToVideoElement("vera-live").then(()=>{ const lv=$("vera-live"); if(lv){ lv.play().catch(()=>{}); } }).catch(()=>{ heroStatus(lang==="es"?"Toque “Chat with Vera” otra vez para el video.":"Tap “Chat with Vera” again to start the video."); });
+      anam.streamToVideoElement("vera-live").then(()=>{ const lv=$("vera-live"); if(lv){ lv.play().catch(()=>{}); } afterConnect(seedQ); }).catch(()=>{ heroStatus(lang==="es"?"Toque “Chat with Olivia” otra vez para el video.":"Tap “Chat with Olivia” again to start the video."); });
     };
     if(anam && anamReady){ go(); }                 // prefetched: stream synchronously (gesture intact)
     else {                                           // not warm yet: prepare, then stream (may need a second tap)
