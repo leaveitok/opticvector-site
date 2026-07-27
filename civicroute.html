@@ -128,14 +128,19 @@
           <input type="checkbox" id="consent" />
           <label for="consent" style="margin:0;font-weight:500">I consent to the city collecting this report to create and follow up on a service request, retained per the city's records-retention schedule (Texas Public Information Act).</label>
         </div>
+        <div id="chanwrap" style="margin-top:10px;font-size:13px;color:#33414e">Update me on:
+          <label style="margin:0 10px 0 6px;font-weight:500"><input type="checkbox" class="chan" value="sms" checked> Text (SMS)</label>
+          <label style="margin:0 10px 0 0;font-weight:500"><input type="checkbox" class="chan" value="whatsapp"> WhatsApp</label>
+          <label style="margin:0;font-weight:500"><input type="checkbox" class="chan" value="email"> Email</label>
+        </div>
         <div style="margin-top:13px"><button class="btn" id="submitBtn" type="button">Submit report →</button><span id="submitErr" class="hint" style="color:#b4322b"></span></div>
       </div>
     </div>
 
     <div id="result" class="hide" style="margin-top:14px"><div class="ok-box"><b>✔ Request created</b><div id="reqid" style="font-size:13px;margin-top:4px"></div></div></div>
-    <div class="step"><h2>Open311 GeoReport v2 request</h2>
-      <div class="hint" style="margin:-6px 0 8px"><code>POST https://311.&lt;city&gt;.gov/requests.json</code> → adapter → <b>Cityworks</b> work order</div>
-      <pre id="payload">Fill in the report to see the request…</pre>
+    <div class="step"><h2 id="rhead">What happens to your report</h2>
+      <div class="hint" id="rsub" style="margin:-6px 0 8px">Submit to see the governed intake: classify → route → create a case → notify.</div>
+      <pre id="payload">Describe an issue, then Submit…</pre>
     </div>
   </div>
 </div>
@@ -200,17 +205,65 @@ function buildPayload(){
   $("payload").innerHTML=JSON.stringify(p,null,2).replace(/"service_code"/,'"<span class="k">service_code</span>"').replace(/"description"/,'"<span class="k">description</span>"');
 }
 function pad(n){return n<10?"0"+n:""+n;}
-function submit(){
+function detectLang(t){ return /[áéíóúñ¿¡]|\b(agua|calle|basura|reporte|fuga|bache|hola|gracias|luz)\b/i.test(t||"")?"es":"en"; }
+
+async function submit(){
   $("submitErr").textContent="";
+  const text=$("report").value.trim();
+  if(!text){$("submitErr").textContent="  Add a description first.";return;}
   if(!$("consent").checked){$("submitErr").textContent="  Please check consent to submit.";return;}
+  const channels=[...document.querySelectorAll(".chan:checked")].map(c=>c.value);
+  const body={text, language:detectLang(text), location:$("addr").value.trim()||null, contact:$("contact").value.trim()||null, channels, consent:true};
+  $("submitBtn").disabled=true; status("Submitting…");
+  try{
+    const res=await fetch(`${API_BASE}/api/cases/${TENANT}/intake`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    if(!res.ok) throw new Error("http "+res.status);
+    await showResult(await res.json(), body);
+  }catch(e){
+    submitMock();   // /intake not reachable yet -> client-side simulation
+  }finally{ $("submitBtn").disabled=false; status(live?"Live — speak, or type on the right.":""); }
+}
+
+async function showResult(d, body){
+  $("result").classList.remove("hide");
+  const es = body.language==="es";
+  const backendLbl = d.backend==="wo" ? "routed to a work-order system (Cityworks)" : "placed in CivicRoute's governed queue";
+  if(d.action==="defer"){
+    $("rhead").textContent="Received — sent to human triage";
+    $("reqid").innerHTML=`Case <b>${d.case_id}</b> · status <b>${d.status}</b><br><span class="hint">Routing confidence was ${(d.confidence*100|0)}% — below the bar, so we did <b>not</b> guess a department. A specialist reviews and routes it (cite-or-defer, applied to routing).</span>`;
+  }else{
+    $("rhead").textContent="Routed";
+    $("reqid").innerHTML=`Case <b>${d.case_id}</b> · <b>${d.service_code}</b> → <b>${d.department}</b><br><span class="hint">${backendLbl} · confidence ${(d.confidence*100|0)}% · status ${d.status}.</span>`;
+  }
+  const spoken = d.action==="defer"
+    ? (es?`Gracias. Registré su reporte como ${d.case_id}. Un especialista lo revisará y lo enviará al equipo correcto.`:`Thanks. I've logged this as ${d.case_id} and sent it to a specialist to route.`)
+    : (es?`Gracias. Registré su reporte como ${d.case_id} y lo envié a ${d.department}.`:`Thanks. I've logged this as ${d.case_id} and routed it to ${d.department}.`);
+  speakLine(spoken);
+  const panel={case_id:d.case_id,action:d.action,service_code:d.service_code,department:d.department,backend:d.backend,confidence:d.confidence,status:d.status};
+  let notesLine="";
+  try{
+    const nr=await fetch(`${API_BASE}/api/cases/${TENANT}/${d.case_id}/notifications`);
+    if(nr.ok){ const sent=(await nr.json()).sent||[];
+      notesLine = sent.length ? "\n\n// confirmations sent:\n"+sent.map(s=>`  ${s.channel}: ${s.body}`).join("\n")
+                              : "\n\n// no confirmation sent (needs a contact + consent + a channel)"; }
+  }catch(_){}
+  $("rsub").textContent="Live from the governed engine — classify → route → case → notify.";
+  $("payload").textContent=JSON.stringify(panel,null,2)+notesLine;
+  $("result").scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+
+function submitMock(){   // fallback: /intake unreachable (backend not deployed yet)
+  if(!current){ return; }
   buildPayload();
-  const now=new Date(); const eta=new Date(now.getTime()+(current.type==="batch"?5:2)*864e5);
+  const now=new Date();
   const id="LWV-"+now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+"-"+Math.floor(1000+Math.random()*9000);
   $("result").classList.remove("hide");
-  $("reqid").innerHTML=`Open311 <code>service_request_id</code>: <b>${id}</b> · status <b>open</b><br><span class="hint">Simulated · expected by ${eta.toLocaleDateString()} · ${current.group}. A real adapter now creates the Cityworks work order and returns its case number.</span>`;
-  const resp={service_requests:[{service_request_id:id,status:"open",service_name:current.name,service_code:current.code,requested_datetime:now.toISOString(),expected_datetime:eta.toISOString(),agency_responsible:current.group}]};
-  $("payload").innerHTML=$("payload").innerHTML+"\n\n<span style='color:#9fb6cf'>// ← 201 Created the city returns:</span>\n"+JSON.stringify(resp,null,2);
-  speakLine(`Thanks — I've filed that as request ${id} for ${current.name}. ${$("contact").value.trim()&&$("consent").checked?"We'll send you status updates.":"You can track it with that request ID."}`);
+  $("rhead").textContent="Offline preview (Open311 simulation)";
+  $("rsub").textContent="Backend not reachable — showing the client-side simulation. Ship the backend (00.12) to go live.";
+  $("reqid").innerHTML=`Simulated <code>service_request_id</code>: <b>${id}</b> · status <b>open</b>`;
+  const resp={service_requests:[{service_request_id:id,status:"open",service_name:current.name,service_code:current.code}]};
+  $("payload").innerHTML=$("payload").innerHTML+"\n\n<span style='color:#9fb6cf'>// ← simulated 201:</span>\n"+JSON.stringify(resp,null,2);
+  speakLine(`Thanks — I've filed that as ${id} for ${current.name}.`);
   $("result").scrollIntoView({behavior:"smooth",block:"nearest"});
 }
 function pickVoice(kind){
