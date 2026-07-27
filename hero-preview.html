@@ -182,6 +182,29 @@ footer .legal{border-top:1px solid rgba(255,255,255,.08);margin-top:36px;padding
 .vp-stage video{width:100%;height:238px;object-fit:cover;display:block;background:#0b1020}
 .vp-stage .badge{position:absolute;top:8px;left:8px;background:rgba(11,16,32,.72);color:#cfe0ff;font-size:11px;padding:3px 9px;border-radius:10px}
 .vp-status{font-size:12px;color:#5b6b7a;padding:6px 14px}
+
+/* ===== hero live takeover (Amarillo-style) + End ===== */
+.hero-live-video{position:absolute;top:0;right:0;height:100%;width:60%;object-fit:cover;object-position:center 16%;z-index:1;display:none;background:#0b1020}
+.hero.hero-vera.live .hero-portrait{display:none}
+.hero.hero-vera.live .hero-live-video{display:block}
+.hero.hero-vera.live .hero-copy{display:none}
+.hero-live-ui{display:none}
+.hero.hero-vera.live .hero-live-ui{display:block}
+.hero-end{position:absolute;top:20px;right:24px;z-index:6;background:#c0392b;color:#fff;border:none;border-radius:24px;padding:11px 20px;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.4)}
+.hero-end:hover{background:#a5281b}
+.hero-live-panel{position:absolute;left:0;top:0;bottom:0;width:min(44%,520px);z-index:5;display:flex;flex-direction:column;justify-content:flex-end;gap:10px;padding:26px 26px 30px;background:linear-gradient(90deg,rgba(11,16,32,.94),rgba(11,16,32,.72) 72%,transparent)}
+.hlp-title{color:#cfe0ff;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+.hlp-disc{color:#9fb6cf;font-size:11.5px;line-height:1.4}
+.hlp-log{overflow-y:auto;max-height:44vh;display:flex;flex-direction:column;gap:9px;padding-right:4px}
+.hlp-status{color:#9fb6cf;font-size:12px;min-height:14px}
+.hlp-form{display:flex;gap:8px}
+.hlp-form input{flex:1;padding:12px 13px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:#fff;border-radius:10px;font-size:14px;font-family:inherit;min-height:46px}
+.hlp-form input::placeholder{color:#8ea3ba}
+.hlp-form button{background:var(--blue);color:#fff;border:none;border-radius:10px;padding:0 18px;font-weight:600;cursor:pointer;min-height:46px;font-family:inherit}
+@media(max-width:900px){
+  .hero-live-video{width:100%;opacity:.5}
+  .hero-live-panel{width:100%;background:linear-gradient(180deg,rgba(11,16,32,.35),rgba(11,16,32,.92) 45%)}
+}
 </style>
 </head>
 <body>
@@ -211,6 +234,7 @@ footer .legal{border-top:1px solid rgba(255,255,255,.08);margin-top:36px;padding
 <!-- HERO -->
 <section class="hero hero-vera" id="top">
   <video class="hero-portrait" autoplay muted loop playsinline poster="vera-hero.jpg" aria-label="Vera — the OpticVector AI concierge"><source src="vera-hero.mp4" type="video/mp4" /></video>
+  <video id="vera-live" class="hero-live-video" playsinline></video>
   <div class="wrap">
     <div class="hero-copy">
       <p class="eyebrow">Meet Vera · Your public-sector AI concierge</p>
@@ -221,6 +245,19 @@ footer .legal{border-top:1px solid rgba(255,255,255,.08);margin-top:36px;padding
         <button class="btn ghost lg" onclick="Vera.openAvatar('es')">Habla con Vera</button>
       </div>
       <div class="hint"><span class="pulse-dot"></span> Grounded to this site's content · bilingual · AI-disclosed</div>
+    </div>
+  </div>
+  <div class="hero-live-ui" id="vera-live-ui" aria-hidden="true">
+    <button class="hero-end" id="vera-end" onclick="Vera.endAvatar()" aria-label="End call">✕  End call</button>
+    <div class="hero-live-panel">
+      <div class="hlp-title">Vera · live</div>
+      <div class="hlp-disc" id="hero-disc"></div>
+      <div class="hlp-log" id="hero-log" role="log" aria-live="polite" aria-relevant="additions"></div>
+      <div class="hlp-status" id="hero-status" role="status" aria-live="polite"></div>
+      <form class="hlp-form" id="hero-form" autocomplete="off">
+        <input id="hero-input" type="text" aria-label="Type your question to Vera" placeholder="Type your question…" />
+        <button type="submit">Send</button>
+      </form>
     </div>
   </div>
 </section>
@@ -560,62 +597,76 @@ const Vera = (function(){
   function toggleLang(){ lang=lang==="en"?"es":"en"; render(); bubble("bot",UI[lang].greet); }
 
   document.addEventListener("DOMContentLoaded",()=>{
-    $("vera-form").addEventListener("submit",(e)=>{ e.preventDefault(); const v=$("vera-input").value.trim(); if(!v)return; $("vera-input").value=""; if(avatarOn){ bubble("user",v); speakGrounded(v); } else { ask(v); } });
-    prepareAvatar();   // prefetch token + client on load (no minutes used until streaming)
+    $("vera-form").addEventListener("submit",(e)=>{ e.preventDefault(); const v=$("vera-input").value.trim(); if(!v)return; $("vera-input").value=""; ask(v); });
+    const hf=$("hero-form"); if(hf) hf.addEventListener("submit",(e)=>{ e.preventDefault(); const v=$("hero-input").value.trim(); if(!v)return; $("hero-input").value=""; heroBubble("user",v); speakGrounded(v); });
+    // avatar client is prepared lazily on the first "Chat with Vera" click; endAvatar() releases it
   });
-  // ===== Anam avatar (PREVIEW): face+voice only; our /api/query stays the brain =====
+  // ===== Anam avatar — HERO TAKEOVER (Amarillo-style), with End =====
   const ANAM_SDK="https://esm.sh/@anam-ai/js-sdk";
-  let anam=null, anamReady=false, avatarOn=false, lastUserId=null, preparing=null;
-  function setStatus(t){ const el=$("vera-status"); if(el) el.textContent=t||""; }
-
-  async function prepareAvatar(){        // on load: mint token + create client (NO stream yet)
+  let anam=null, heroLive=false, lastUserId=null, preparing=null;
+  function heroStatus(t){ const el=$("hero-status"); if(el) el.textContent=t||""; }
+  function heroBubble(role,text,src){
+    const log=$("hero-log"); if(!log) return;
+    const d=document.createElement("div"); d.className="vmsg "+role; d.textContent=text;
+    if(src){ const sd=document.createElement("div"); sd.className="vsrc"; sd.innerHTML="<b>"+UI[lang].sources+"</b><a href='"+src.h+"' target='_blank' rel='noopener'>"+src.t+" →</a>"; d.appendChild(sd); }
+    log.appendChild(d); log.scrollTop=log.scrollHeight;
+  }
+  async function prepareAvatar(){        // lazy: mint token + create client on first open (no stream yet)
     try{
       const r=await fetch(API_BASE+"/api/avatar/session",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tenant_id:TENANT})});
-      const s=(await r.json()).avatar_session||{};
-      if(s.engine!=="anam"||!s.session_token) return false;
+      const sess=(await r.json()).avatar_session||{};
+      if(sess.engine!=="anam"||!sess.session_token) return false;
       const mod=await import(ANAM_SDK);
-      anam=mod.createClient(s.session_token);
-      anam.addListener(mod.AnamEvent.MESSAGE_HISTORY_UPDATED, (messages)=>{
+      anam=mod.createClient(sess.session_token);
+      anam.addListener(mod.AnamEvent.MESSAGE_HISTORY_UPDATED,(messages)=>{
         const arr=Array.isArray(messages)?messages:(messages&&messages.messages)||[];
         const last=arr[arr.length-1];
         if(!last||(last.role||"").toLowerCase()!=="user") return;
-        const id=last.id||last.content;
-        if(id===lastUserId) return; lastUserId=id;
+        const id=last.id||last.content; if(id===lastUserId) return; lastUserId=id;
         const text=last.content||""; if(!text) return;
-        bubble("user",text); speakGrounded(text);
+        heroBubble("user",text); speakGrounded(text);
       });
-      anamReady=true; return true;
-    }catch(e){ anamReady=false; return false; }
+      return true;
+    }catch(e){ return false; }
   }
-
   async function speakGrounded(q){       // OUR grounded answer -> transcript + avatar voice
-    typing(true);
+    heroStatus(lang==="es"?"Pensando…":"Thinking…");
     try{
       const res=await fetch(API_BASE+"/api/query",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tenant_id:TENANT,text:q,language:lang})});
-      const data=await res.json(); typing(false);
-      if(data.language && data.language!==lang){ lang=data.language; render(); }
+      const data=await res.json(); heroStatus("");
+      if(data.language && data.language!==lang){ lang=data.language; const hd=$("hero-disc"); if(hd) hd.textContent=UI[lang].disc; }
       const src2=(data.citations&&data.citations.length)?{t:(data.citations[0].title||data.citations[0].source_id),h:(data.citations[0].url||"#")}:null;
       const clean=stripMarker(data.text);
-      bubble("bot",clean,src2);
+      heroBubble("bot",clean,src2);
       if(anam){ try{ const ts=anam.createTalkMessageStream(); ts.streamMessageChunk(clean,false); ts.endMessage(); }catch(_){ if(anam.talk) anam.talk(clean); } }
-    }catch(e){ typing(false); bubble("bot", lang==="es"?"No pude conectar. Intente de nuevo.":"I couldn't reach the assistant. Please try again."); }
+    }catch(e){ heroStatus(""); heroBubble("bot", lang==="es"?"No pude conectar. Intente de nuevo.":"I couldn't reach the assistant. Please try again."); }
   }
-
   async function openAvatar(l){
     if(l){ lang=l; }
-    open();                              // opens panel + greeting (render() runs inside)
-    if(!anam){ setStatus(lang==="es"?"Conectando el avatar…":"Connecting the avatar…");
-      const ok=await (preparing||(preparing=prepareAvatar()));
-      if(!ok){ setStatus(lang==="es"?"El avatar no está disponible — puede escribir abajo.":"Avatar unavailable — you can type below."); return; } }
+    const hero=document.getElementById("top");
+    const hd=$("hero-disc"); if(hd) hd.textContent=UI[lang].disc;
+    if(hero) hero.classList.add("live");
+    const ui=$("vera-live-ui"); if(ui) ui.setAttribute("aria-hidden","false");
+    heroStatus(lang==="es"?"Conectando…":"Connecting…");
+    if(!anam){ const ok=await (preparing||(preparing=prepareAvatar())); if(!ok){ heroStatus(lang==="es"?"El avatar no está disponible ahora.":"Avatar unavailable right now — please try again."); return; } }
     try{
-      const stage=$("vera-stage"); if(stage) stage.classList.add("on");
-      avatarOn=true;
-      await anam.streamToVideoElement("vera-video");   // light DOM: string id resolves
-      setStatus(lang==="es"?"Avatar activo. Hable o escriba abajo.":"Avatar live — speak, or type below.");
-    }catch(e){ setStatus(lang==="es"?"No se pudo iniciar el video.":"Couldn't start the video."); }
+      heroLive=true;
+      await anam.streamToVideoElement("vera-live");
+      heroStatus(lang==="es"?"En vivo — hable o escriba abajo.":"Live — speak, or type below.");
+      const log=$("hero-log"); if(log && !log.childElementCount) heroBubble("bot", UI[lang].greet);
+    }catch(e){ heroStatus(lang==="es"?"No se pudo iniciar el video.":"Couldn't start the video."); }
+  }
+  async function endAvatar(){
+    heroLive=false;
+    try{ if(anam && anam.stopStreaming) await anam.stopStreaming(); }catch(_){}
+    anam=null; preparing=null; lastUserId=null;    // fully release; fresh session next open
+    const hero=document.getElementById("top"); if(hero) hero.classList.remove("live");
+    const ui=$("vera-live-ui"); if(ui) ui.setAttribute("aria-hidden","true");
+    const log=$("hero-log"); if(log) log.innerHTML="";
+    heroStatus("");
   }
 
-  return {open,close,ask,toggleLang,openAvatar};
+  return {open,close,ask,toggleLang,openAvatar,endAvatar};
 })();
 </script>
 </body>
