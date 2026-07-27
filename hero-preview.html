@@ -234,7 +234,7 @@ footer .legal{border-top:1px solid rgba(255,255,255,.08);margin-top:36px;padding
 <!-- HERO -->
 <section class="hero hero-vera" id="top">
   <video class="hero-portrait" autoplay muted loop playsinline poster="vera-hero.jpg" aria-label="Vera — the OpticVector AI concierge"><source src="vera-hero.mp4" type="video/mp4" /></video>
-  <video id="vera-live" class="hero-live-video" playsinline></video>
+  <video id="vera-live" class="hero-live-video" autoplay playsinline></video>
   <div class="wrap">
     <div class="hero-copy">
       <p class="eyebrow">Meet Vera · Your public-sector AI concierge</p>
@@ -662,7 +662,7 @@ const Vera = (function(){
     const go=()=>{
       touchActivity();
       heroStatus(lang==="es"?"En vivo — hable o escriba abajo.":"Live — speak, or type below.");
-      anam.streamToVideoElement("vera-live").catch(()=>{ heroStatus(lang==="es"?"Toque “Chat with Vera” otra vez para el video.":"Tap “Chat with Vera” again to start the video."); });
+      anam.streamToVideoElement("vera-live").then(()=>{ const lv=$("vera-live"); if(lv){ lv.play().catch(()=>{}); } }).catch(()=>{ heroStatus(lang==="es"?"Toque “Chat with Vera” otra vez para el video.":"Tap “Chat with Vera” again to start the video."); });
     };
     if(anam && anamReady){ go(); }                 // prefetched: stream synchronously (gesture intact)
     else {                                           // not warm yet: prepare, then stream (may need a second tap)
@@ -674,6 +674,7 @@ const Vera = (function(){
     heroLive=false;
     if(idleTimer){ clearTimeout(idleTimer); idleTimer=null; }
     try{ if(anam && anam.stopStreaming) await anam.stopStreaming(); }catch(_){}
+    const lv=$("vera-live"); if(lv && lv.srcObject){ try{ lv.srcObject.getTracks().forEach(t=>t.stop()); }catch(_){} lv.srcObject=null; }
     anam=null; anamReady=false; lastUserId=null;
     const hero=document.getElementById("top"); if(hero) hero.classList.remove("live");
     const ui=$("vera-live-ui"); if(ui) ui.setAttribute("aria-hidden","true");
