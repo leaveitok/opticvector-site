@@ -599,11 +599,11 @@ const Vera = (function(){
   document.addEventListener("DOMContentLoaded",()=>{
     $("vera-form").addEventListener("submit",(e)=>{ e.preventDefault(); const v=$("vera-input").value.trim(); if(!v)return; $("vera-input").value=""; ask(v); });
     const hf=$("hero-form"); if(hf) hf.addEventListener("submit",(e)=>{ e.preventDefault(); const v=$("hero-input").value.trim(); if(!v)return; $("hero-input").value=""; heroBubble("user",v); speakGrounded(v); });
-    // avatar client is prepared lazily on the first "Chat with Vera" click; endAvatar() releases it
+    preparing=prepareAvatar();   // warm the avatar client on load so the click can stream instantly (autoplay needs the gesture)
   });
   // ===== Anam avatar — HERO TAKEOVER (Amarillo-style), with End =====
   const ANAM_SDK="https://esm.sh/@anam-ai/js-sdk";
-  let anam=null, heroLive=false, lastUserId=null, preparing=null;
+  let anam=null, anamReady=false, heroLive=false, lastUserId=null, preparing=null;
   function heroStatus(t){ const el=$("hero-status"); if(el) el.textContent=t||""; }
   function heroBubble(role,text,src){
     const log=$("hero-log"); if(!log) return;
@@ -626,8 +626,8 @@ const Vera = (function(){
         const text=last.content||""; if(!text) return;
         heroBubble("user",text); speakGrounded(text);
       });
-      return true;
-    }catch(e){ return false; }
+      anamReady=true; return true;
+    }catch(e){ anamReady=false; return false; }
   }
   async function speakGrounded(q){       // OUR grounded answer -> transcript + avatar voice
     heroStatus(lang==="es"?"Pensando…":"Thinking…");
@@ -641,29 +641,33 @@ const Vera = (function(){
       if(anam){ try{ const ts=anam.createTalkMessageStream(); ts.streamMessageChunk(clean,false); ts.endMessage(); }catch(_){ if(anam.talk) anam.talk(clean); } }
     }catch(e){ heroStatus(""); heroBubble("bot", lang==="es"?"No pude conectar. Intente de nuevo.":"I couldn't reach the assistant. Please try again."); }
   }
-  async function openAvatar(l){
+  function openAvatar(l){          // NOT async: must run inside the click gesture so the avatar (which has audio) can autoplay
     if(l){ lang=l; }
     const hero=document.getElementById("top");
     const hd=$("hero-disc"); if(hd) hd.textContent=UI[lang].disc;
     if(hero) hero.classList.add("live");
+    heroLive=true;
     const ui=$("vera-live-ui"); if(ui) ui.setAttribute("aria-hidden","false");
-    heroStatus(lang==="es"?"Conectando…":"Connecting…");
-    if(!anam){ const ok=await (preparing||(preparing=prepareAvatar())); if(!ok){ heroStatus(lang==="es"?"El avatar no está disponible ahora.":"Avatar unavailable right now — please try again."); return; } }
-    try{
-      heroLive=true;
-      await anam.streamToVideoElement("vera-live");
+    const log=$("hero-log"); if(log && !log.childElementCount) heroBubble("bot", UI[lang].greet);
+    const go=()=>{
       heroStatus(lang==="es"?"En vivo — hable o escriba abajo.":"Live — speak, or type below.");
-      const log=$("hero-log"); if(log && !log.childElementCount) heroBubble("bot", UI[lang].greet);
-    }catch(e){ heroStatus(lang==="es"?"No se pudo iniciar el video.":"Couldn't start the video."); }
+      anam.streamToVideoElement("vera-live").catch(()=>{ heroStatus(lang==="es"?"Toque “Chat with Vera” otra vez para el video.":"Tap “Chat with Vera” again to start the video."); });
+    };
+    if(anam && anamReady){ go(); }                 // prefetched: stream synchronously (gesture intact)
+    else {                                           // not warm yet: prepare, then stream (may need a second tap)
+      heroStatus(lang==="es"?"Conectando…":"Connecting…");
+      (preparing||(preparing=prepareAvatar())).then(ok=>{ if(ok){ go(); } else { heroStatus(lang==="es"?"El avatar no está disponible ahora.":"Avatar unavailable right now — please try again."); } });
+    }
   }
   async function endAvatar(){
     heroLive=false;
     try{ if(anam && anam.stopStreaming) await anam.stopStreaming(); }catch(_){}
-    anam=null; preparing=null; lastUserId=null;    // fully release; fresh session next open
+    anam=null; anamReady=false; lastUserId=null;
     const hero=document.getElementById("top"); if(hero) hero.classList.remove("live");
     const ui=$("vera-live-ui"); if(ui) ui.setAttribute("aria-hidden","true");
     const log=$("hero-log"); if(log) log.innerHTML="";
     heroStatus("");
+    preparing=prepareAvatar();     // warm a fresh client so the next "Chat with Vera" streams instantly
   }
 
   return {open,close,ask,toggleLang,openAvatar,endAvatar};
