@@ -9,6 +9,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="preconnect" href="https://api.anam.ai" />
+<link rel="modulepreload" href="https://esm.sh/@anam-ai/js-sdk" />
 <style>
 :root{
   --navy:#0F1E2D; --navy-2:#152A3E; --blue:#3E9BE0; --blue-d:#2f83c4;
@@ -160,6 +162,55 @@ footer .legal{border-top:1px solid rgba(255,255,255,.08);margin-top:36px;padding
 .vp-form button{background:var(--blue);color:#fff;border:none;border-radius:10px;padding:0 16px;font-weight:600;cursor:pointer;min-height:44px;font-family:inherit}
 .vtyping{align-self:flex-start;color:var(--mut);font-size:13px;padding:4px 6px}
 @media(prefers-reduced-motion:reduce){.v-ring,.pulse-dot{animation:none}}
+
+/* ===== Amarillo-style hero + avatar (PREVIEW) ===== */
+.preview-ribbon{position:fixed;top:0;left:0;right:0;z-index:3000;background:#b45309;color:#fff;text-align:center;font-size:12.5px;font-weight:700;padding:6px 12px;letter-spacing:.02em}
+.hero.hero-vera{min-height:80vh;display:flex;align-items:center;overflow:hidden}
+.hero-portrait{position:absolute;top:0;right:0;height:100%;width:60%;object-fit:cover;object-position:center 16%;z-index:1}
+.hero.hero-vera::before{content:"";position:absolute;inset:0;z-index:2;background:linear-gradient(90deg,#0F1E2D 0%,#0F1E2D 38%,rgba(15,30,45,.62) 58%,rgba(15,30,45,.08) 100%)}
+.hero.hero-vera .wrap{position:relative;z-index:3;width:100%}
+.hero-copy{max-width:53ch}
+.hero .cta .btn.lg{padding:15px 28px;font-size:17px;border-radius:12px}
+.btn.primary.lg{box-shadow:0 10px 28px rgba(62,155,224,.38)}
+@media(max-width:900px){
+  .hero-portrait{width:100%;opacity:.28;object-position:center top}
+  .hero.hero-vera::before{background:linear-gradient(180deg,rgba(15,30,45,.5),rgba(15,30,45,.88))}
+  .hero-copy{max-width:none}
+}
+.vp-stage{position:relative;background:#0b1020;display:none}
+.vp-stage.on{display:block}
+.vp-stage video{width:100%;height:238px;object-fit:cover;display:block;background:#0b1020}
+.vp-stage .badge{position:absolute;top:8px;left:8px;background:rgba(11,16,32,.72);color:#cfe0ff;font-size:11px;padding:3px 9px;border-radius:10px}
+.vp-status{font-size:12px;color:#5b6b7a;padding:6px 14px}
+
+/* ===== hero live takeover (Amarillo-style) + End ===== */
+.hero-live-video{position:absolute;top:0;right:0;height:100%;width:60%;object-fit:cover;object-position:center 16%;z-index:1;display:none;background:#0b1020}
+.hero.hero-vera.live .hero-portrait{display:none}
+.hero.hero-vera.live .hero-live-video{display:block}
+.hero.hero-vera.live .hero-copy{display:none}
+.hero-live-ui{display:none}
+.hero.hero-vera.live .hero-live-ui{display:block}
+.hero-end{position:absolute;top:20px;right:24px;z-index:6;background:#c0392b;color:#fff;border:none;border-radius:24px;padding:11px 20px;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.4)}
+.hero-end:hover{background:#a5281b}
+.hero-live-panel{position:absolute;left:0;top:0;bottom:0;width:min(44%,520px);z-index:5;display:flex;flex-direction:column;justify-content:flex-end;gap:10px;padding:26px 26px 30px;background:linear-gradient(90deg,rgba(11,16,32,.94),rgba(11,16,32,.72) 72%,transparent)}
+.hlp-title{color:#cfe0ff;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+.hlp-disc{color:#9fb6cf;font-size:11.5px;line-height:1.4}
+.hlp-log{overflow-y:auto;max-height:44vh;display:flex;flex-direction:column;gap:9px;padding-right:4px}
+.hlp-status{color:#9fb6cf;font-size:12px;min-height:14px}
+.hlp-form{display:flex;gap:8px}
+.hlp-form input{flex:1;padding:12px 13px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:#fff;border-radius:10px;font-size:14px;font-family:inherit;min-height:46px}
+.hlp-form input::placeholder{color:#8ea3ba}
+.hlp-form button{background:var(--blue);color:#fff;border:none;border-radius:10px;padding:0 18px;font-weight:600;cursor:pointer;min-height:46px;font-family:inherit}
+@media(max-width:900px){
+  .hero-live-video{width:100%;opacity:.5}
+  .hero-live-panel{width:100%;background:linear-gradient(180deg,rgba(11,16,32,.35),rgba(11,16,32,.92) 45%)}
+}
+
+.hlp-log .vmsg{max-width:100%;font-size:13.5px;line-height:1.45}
+.hlp-log .vmsg.bot{background:#eef3f9;color:#0f1e2d;border:none}
+.hlp-log .vmsg.user{background:var(--blue);color:#fff}
+.hlp-log .vsrc b{color:#5b6b7a}
+.hlp-log .vsrc a{color:var(--blue-d)}
 </style>
 </head>
 <body>
@@ -186,16 +237,33 @@ footer .legal{border-top:1px solid rgba(255,255,255,.08);margin-top:36px;padding
 </header>
 
 <!-- HERO -->
-<section class="hero" id="top">
+<section class="hero hero-vera" id="top">
+  <video class="hero-portrait" autoplay muted loop playsinline poster="vera-hero.jpg" aria-label="Olivia — the OpticVector AI concierge"><source src="vera-hero.mp4" type="video/mp4" /></video>
+  <video id="vera-live" class="hero-live-video" autoplay playsinline></video>
   <div class="wrap">
-    <p class="eyebrow">OpticVector AI · Public-sector AI software</p>
-    <h1>See the AI. <span class="g">Govern it.</span> Answer for it.</h1>
-    <p class="lead">OpticVector AI is a modular software house for local government — pairing AI-governance compliance with grounded, citizen-facing concierge intelligence. Compliance-native by construction, built from live evidence.</p>
-    <div class="cta">
-      <a href="#products" class="btn primary">Explore the platform</a>
-      <button class="btn ghost" onclick="Vera.open()">Talk to our AI concierge</button>
+    <div class="hero-copy">
+      <p class="eyebrow">Meet Olivia · Your public-sector AI concierge</p>
+      <h1>See the AI. <span class="g">Govern it.</span> Answer for it.</h1>
+      <p class="lead">Olivia is OpticVector's grounded digital concierge. She answers only from published information, cites her source, and defers honestly when the answer isn't there — the exact experience your residents would get.</p>
+      <div class="cta">
+        <button class="btn primary lg" onclick="Vera.openAvatar('en')">▶&nbsp;&nbsp;Chat with Olivia</button>
+        <button class="btn ghost lg" onclick="Vera.openAvatar('es')">Habla con Olivia</button>
+      </div>
+      <div class="hint"><span class="pulse-dot"></span> Grounded to this site's content · bilingual · AI-disclosed</div>
     </div>
-    <div class="hint"><span class="pulse-dot"></span> Try it now — the assistant on this site is our own concierge product, answering only from this site's content.</div>
+  </div>
+  <div class="hero-live-ui" id="vera-live-ui" aria-hidden="true">
+    <button class="hero-end" id="vera-end" onclick="Vera.endAvatar()" aria-label="End call">✕  End call</button>
+    <div class="hero-live-panel">
+      <div class="hlp-title">Olivia · live</div>
+      <div class="hlp-disc" id="hero-disc"></div>
+      <div class="hlp-log" id="hero-log" role="log" aria-live="polite" aria-relevant="additions"></div>
+      <div class="hlp-status" id="hero-status" role="status" aria-live="polite"></div>
+      <form class="hlp-form" id="hero-form" autocomplete="off">
+        <input id="hero-input" type="text" aria-label="Type your question to Olivia" placeholder="Type your question…" />
+        <button type="submit">Send</button>
+      </form>
+    </div>
   </div>
 </section>
 
@@ -230,7 +298,7 @@ footer .legal{border-top:1px solid rgba(255,255,255,.08);margin-top:36px;padding
           <li>Generates the artifacts a regulator asks for: AG Response Package, Written Statement of Cure, and a Safe-Harbor alignment to a 14-control NIST AI RMF profile.</li>
           <li>Fail-secure by design — a blocked or failed scan is never reported clean.</li>
         </ul>
-        <div class="foot"><button class="btn dark" onclick="Vera.ask('What is TRAIGA Auditor?')">Ask Vera about TRAIGA Auditor →</button></div>
+        <div class="foot"><button class="btn dark" onclick="Vera.ask('What is TRAIGA Auditor?')">Ask Olivia about TRAIGA Auditor →</button></div>
       </div>
 
       <div class="card">
@@ -244,7 +312,7 @@ footer .legal{border-top:1px solid rgba(255,255,255,.08);margin-top:36px;padding
           <li>Accessible-first: WCAG 2.2 AA text/voice widget is the default; the avatar is an optional premium layer, never the sole channel.</li>
           <li>Zero-PII, one-line embed as a Web Component — drops into any CMS with no style collisions.</li>
         </ul>
-        <div class="foot"><button class="btn dark" onclick="Vera.ask('What is GovAssist AI?')">Ask Vera about GovAssist →</button></div>
+        <div class="foot"><button class="btn dark" onclick="Vera.ask('What is GovAssist AI?')">Ask Olivia about GovAssist →</button></div>
       </div>
 
     </div>
@@ -257,7 +325,7 @@ footer .legal{border-top:1px solid rgba(255,255,255,.08);margin-top:36px;padding
     <div class="concierge">
       <div>
         <p class="eyebrow" style="color:var(--blue)">The demo is the product</p>
-        <h2>Meet Vera — the concierge running on this very site.</h2>
+        <h2>Meet Olivia — the concierge running on this very site.</h2>
         <p>The assistant in the corner of this page is our own GovAssist concierge, pointed at OpticVector's content. Ask her anything about the company or the products: she answers only from this site, cites what she used, and defers honestly when the answer isn't published.</p>
         <p>That's the pitch to a city — the exact experience your residents would get, dogfooded on our own site before we ever ask you to embed it.</p>
         <div class="mini">
@@ -268,7 +336,7 @@ footer .legal{border-top:1px solid rgba(255,255,255,.08);margin-top:36px;padding
         <div style="margin-top:26px"><button class="btn primary" onclick="Vera.open()">Open the concierge</button></div>
       </div>
       <div class="demo-card" aria-hidden="true">
-        <div class="dc-head"><span class="v-ava"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" fill="#fff"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" fill="#fff"/></svg></span><b>Vera · City Assistant</b></div>
+        <div class="dc-head"><span class="v-ava"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" fill="#fff"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" fill="#fff"/></svg></span><b>Olivia · City Assistant</b></div>
         <div class="dc-body">
           <div class="bub u">How do I pay my water bill?</div>
           <div class="bub b">You can pay online through the Utility Billing portal, by phone, or in person at City Hall.<div class="src">Source: Utility Billing →</div></div>
@@ -367,17 +435,19 @@ footer .legal{border-top:1px solid rgba(255,255,255,.08);margin-top:36px;padding
 <!-- ================= CONCIERGE WIDGET ================= -->
 <button id="vera-launch" onclick="Vera.open()" aria-haspopup="dialog" aria-label="Open OpticVector AI concierge">
   <span class="v-ava"><span class="v-ring"></span><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" fill="#fff"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" fill="#fff"/></svg></span>
-  Ask Vera
+  Ask Olivia
 </button>
 
 <section id="vera-panel" role="dialog" aria-modal="false" aria-label="OpticVector AI concierge">
   <div class="vp-head">
     <span class="v-ava big"><span class="v-ring"></span><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" fill="#fff"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" fill="#fff"/></svg></span>
-    <span class="who"><b>Vera</b><small>OpticVector AI concierge</small></span>
+    <span class="who"><b>Olivia</b><small>OpticVector AI concierge</small></span>
     <button id="vera-lang" onclick="Vera.toggleLang()">Español</button>
     <button onclick="Vera.close()" aria-label="Close">✕</button>
   </div>
   <div class="vp-disc" id="vera-disc"></div>
+  <div class="vp-stage" id="vera-stage"><span class="badge">AI avatar</span><video id="vera-video" autoplay playsinline aria-hidden="true"></video></div>
+  <div class="vp-status" id="vera-status" role="status" aria-live="polite"></div>
   <div class="vp-log" id="vera-log" role="log" aria-live="polite" aria-relevant="additions"></div>
   <div class="vchips" id="vera-chips"></div>
   <form class="vp-form" id="vera-form" autocomplete="off">
@@ -396,14 +466,14 @@ footer .legal{border-top:1px solid rgba(255,255,255,.08);margin-top:36px;padding
    ============================================================ */
 const Vera = (function(){
   const UI = {
-    en:{disc:"You're chatting with Vera, an AI assistant. She answers only from OpticVector AI's published information and defers when it isn't here. No personal data is stored.",
+    en:{disc:"You're chatting with Olivia, an AI assistant. She answers only from OpticVector AI's published information and defers when it isn't here. No personal data is stored.",
         ph:"Ask about OpticVector, TRAIGA Auditor, GovAssist…", send:"Send", lang:"Español",
-        greet:"Hi — I'm Vera, OpticVector AI's concierge. Ask me about the company, TRAIGA Auditor, or GovAssist AI. I answer only from this site.",
+        greet:"Hi — I'm Olivia, OpticVector AI's concierge. Ask me about the company, TRAIGA Auditor, or GovAssist AI. I answer only from this site.",
         sources:"Source", think:"Looking that up…",
         chips:["What does OpticVector do?","What is TRAIGA Auditor?","Is it accessible?","How much does it cost?"]},
-    es:{disc:"Está hablando con Vera, un asistente de IA. Responde solo con la información publicada de OpticVector AI y remite cuando no está aquí. No se guardan datos personales.",
+    es:{disc:"Está hablando con Olivia, un asistente de IA. Responde solo con la información publicada de OpticVector AI y remite cuando no está aquí. No se guardan datos personales.",
         ph:"Pregunte sobre OpticVector, TRAIGA Auditor, GovAssist…", send:"Enviar", lang:"English",
-        greet:"Hola — soy Vera, la asistente de OpticVector AI. Pregúnteme sobre la empresa, TRAIGA Auditor o GovAssist AI. Respondo solo con la información de este sitio.",
+        greet:"Hola — soy Olivia, la asistente de OpticVector AI. Pregúnteme sobre la empresa, TRAIGA Auditor o GovAssist AI. Respondo solo con la información de este sitio.",
         sources:"Fuente", think:"Buscando eso…",
         chips:["¿Qué hace OpticVector?","¿Qué es TRAIGA Auditor?","¿Es accesible?","¿Cuánto cuesta?"]}
   };
@@ -533,8 +603,92 @@ const Vera = (function(){
 
   document.addEventListener("DOMContentLoaded",()=>{
     $("vera-form").addEventListener("submit",(e)=>{ e.preventDefault(); const v=$("vera-input").value.trim(); if(!v)return; $("vera-input").value=""; ask(v); });
+    const hf=$("hero-form"); if(hf) hf.addEventListener("submit",(e)=>{ e.preventDefault(); const v=$("hero-input").value.trim(); if(!v)return; $("hero-input").value=""; heroBubble("user",v); speakGrounded(v); });
+    preparing=prepareAvatar();   // warm the avatar client on load so the click can stream instantly (autoplay needs the gesture)
+    document.addEventListener("visibilitychange",()=>{ if(document.hidden && heroLive) endAvatar(); });   // left the tab -> stop minutes
+    window.addEventListener("beforeunload",()=>{ try{ if(anam && anam.stopStreaming) anam.stopStreaming(); }catch(_){} });
   });
-  return {open,close,ask,toggleLang};
+  // ===== Anam avatar — HERO TAKEOVER (Amarillo-style), with End =====
+  const ANAM_SDK="https://esm.sh/@anam-ai/js-sdk";
+  let anam=null, anamReady=false, heroLive=false, lastUserId=null, preparing=null;
+  const IDLE_MS=45000;            // stop the stream after 45s of no interaction (protects free minutes)
+  let idleTimer=null;
+  function touchActivity(){
+    if(idleTimer) clearTimeout(idleTimer);
+    if(!heroLive) return;
+    idleTimer=setTimeout(()=>{ heroStatus(lang==="es"?"Sesión finalizada por inactividad.":"Session ended after inactivity."); endAvatar(); }, IDLE_MS);
+  }
+  function heroStatus(t){ const el=$("hero-status"); if(el) el.textContent=t||""; }
+  function heroBubble(role,text,src){
+    const log=$("hero-log"); if(!log) return;
+    const d=document.createElement("div"); d.className="vmsg "+role; d.textContent=text;
+    if(src){ const sd=document.createElement("div"); sd.className="vsrc"; sd.innerHTML="<b>"+UI[lang].sources+"</b><a href='"+src.h+"' target='_blank' rel='noopener'>"+src.t+" →</a>"; d.appendChild(sd); }
+    log.appendChild(d); log.scrollTop=log.scrollHeight;
+  }
+  async function prepareAvatar(){        // lazy: mint token + create client on first open (no stream yet)
+    try{
+      const r=await fetch(API_BASE+"/api/avatar/session",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tenant_id:TENANT})});
+      const sess=(await r.json()).avatar_session||{};
+      if(sess.engine!=="anam"||!sess.session_token) return false;
+      const mod=await import(ANAM_SDK);
+      anam=mod.createClient(sess.session_token);
+      anam.addListener(mod.AnamEvent.MESSAGE_HISTORY_UPDATED,(messages)=>{
+        const arr=Array.isArray(messages)?messages:(messages&&messages.messages)||[];
+        const last=arr[arr.length-1];
+        if(!last||(last.role||"").toLowerCase()!=="user") return;
+        const id=last.id||last.content; if(id===lastUserId) return; lastUserId=id;
+        const text=last.content||""; if(!text) return;
+        heroBubble("user",text); speakGrounded(text);
+      });
+      anamReady=true; return true;
+    }catch(e){ anamReady=false; return false; }
+  }
+  async function speakGrounded(q){       // OUR grounded answer -> transcript + avatar voice
+    touchActivity();
+    heroStatus(lang==="es"?"Pensando…":"Thinking…");
+    try{
+      const res=await fetch(API_BASE+"/api/query",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tenant_id:TENANT,text:q,language:lang})});
+      const data=await res.json(); heroStatus("");
+      if(data.language && data.language!==lang){ lang=data.language; const hd=$("hero-disc"); if(hd) hd.textContent=UI[lang].disc; }
+      const src2=(data.citations&&data.citations.length)?{t:(data.citations[0].title||data.citations[0].source_id),h:(data.citations[0].url||"#")}:null;
+      const clean=stripMarker(data.text);
+      heroBubble("bot",clean,src2);
+      if(anam){ try{ const ts=anam.createTalkMessageStream(); ts.streamMessageChunk(clean,false); ts.endMessage(); }catch(_){ if(anam.talk) anam.talk(clean); } }
+    }catch(e){ heroStatus(""); heroBubble("bot", lang==="es"?"No pude conectar. Intente de nuevo.":"I couldn't reach the assistant. Please try again."); }
+  }
+  function openAvatar(l){          // NOT async: must run inside the click gesture so the avatar (which has audio) can autoplay
+    if(l){ lang=l; }
+    const hero=document.getElementById("top");
+    const hd=$("hero-disc"); if(hd) hd.textContent=UI[lang].disc;
+    if(hero) hero.classList.add("live");
+    heroLive=true;
+    const ui=$("vera-live-ui"); if(ui) ui.setAttribute("aria-hidden","false");
+    const log=$("hero-log"); if(log && !log.childElementCount) heroBubble("bot", UI[lang].greet);
+    const go=()=>{
+      touchActivity();
+      heroStatus(lang==="es"?"En vivo — hable o escriba abajo.":"Live — speak, or type below.");
+      anam.streamToVideoElement("vera-live").then(()=>{ const lv=$("vera-live"); if(lv){ lv.play().catch(()=>{}); } }).catch(()=>{ heroStatus(lang==="es"?"Toque “Chat with Vera” otra vez para el video.":"Tap “Chat with Vera” again to start the video."); });
+    };
+    if(anam && anamReady){ go(); }                 // prefetched: stream synchronously (gesture intact)
+    else {                                           // not warm yet: prepare, then stream (may need a second tap)
+      heroStatus(lang==="es"?"Conectando…":"Connecting…");
+      (preparing||(preparing=prepareAvatar())).then(ok=>{ if(ok){ go(); } else { heroStatus(lang==="es"?"El avatar no está disponible ahora.":"Avatar unavailable right now — please try again."); } });
+    }
+  }
+  async function endAvatar(){
+    heroLive=false;
+    if(idleTimer){ clearTimeout(idleTimer); idleTimer=null; }
+    try{ if(anam && anam.stopStreaming) await anam.stopStreaming(); }catch(_){}
+    const lv=$("vera-live"); if(lv && lv.srcObject){ try{ lv.srcObject.getTracks().forEach(t=>t.stop()); }catch(_){} lv.srcObject=null; }
+    anam=null; anamReady=false; lastUserId=null;
+    const hero=document.getElementById("top"); if(hero) hero.classList.remove("live");
+    const ui=$("vera-live-ui"); if(ui) ui.setAttribute("aria-hidden","true");
+    const log=$("hero-log"); if(log) log.innerHTML="";
+    heroStatus("");
+    preparing=prepareAvatar();     // warm a fresh client so the next "Chat with Olivia" streams instantly
+  }
+
+  return {open,close,ask,toggleLang,openAvatar,endAvatar};
 })();
 </script>
 </body>
