@@ -166,14 +166,25 @@ let map=null, marker=null, geocoder=null, mapsLoading=null;
 const $ = s => document.getElementById(s);
 
 /* ===== Open311 intake (mock classifier + payload builder) ===== */
+// Mirrors the governed backend catalog (opticvector-311, 14 codes) so the dropdown
+// offers the full taxonomy AND so /extract's service_code always maps to an option.
+// keywords power the OFFLINE fallback classifier only; when the backend answers,
+// its (Gemini) service_code wins. Keep codes/departments in sync with mock.py.
 const CATALOG=[
-  {code:"WATER-LEAK",name:"Water leak / main break",group:"Utilities",type:"realtime",keywords:["water","leak","gushing","bubbling","main break","flooding","hydrant"],attributes:[{code:"severity",label:"How bad is it?",values:["Slow seep","Steady flow","Gushing / flooding"]}]},
-  {code:"SEWER-BACKUP",name:"Sewer backup / odor",group:"Utilities",type:"realtime",keywords:["sewer","backup","drain","smell","odor","manhole"]},
-  {code:"POTHOLE",name:"Pothole / street damage",group:"Streets",type:"realtime",keywords:["pothole","pot hole","road","street","pavement","asphalt","crack"]},
-  {code:"TREE-LIMB",name:"Downed tree / limb",group:"Streets & Parks",type:"realtime",keywords:["tree","limb","branch","fallen","downed","blocking"]},
-  {code:"STREETLIGHT",name:"Streetlight outage",group:"Utilities",type:"realtime",keywords:["streetlight","street light","light","lamp","dark","out","flickering"]},
-  {code:"TRASH-MISSED",name:"Missed trash / recycling pickup",group:"Solid Waste",type:"realtime",keywords:["trash","garbage","recycling","recycle","pickup","pick up","bin","cart","yard waste","missed"],attributes:[{code:"cart_type",label:"Which cart?",values:["Trash","Recycling","Yard waste"]}]},
-  {code:"GRAFFITI",name:"Graffiti removal",group:"Parks",type:"realtime",keywords:["graffiti","tagging","spray paint","vandalism"]}
+  {code:"WATER-LEAK",name:"Water leak / main break",group:"Water Utilities",type:"realtime",keywords:["water leak","leak","gushing","bubbling","main break","water main","flooding","hydrant","no water","low pressure"],attributes:[{code:"severity",label:"How bad is it?",values:["Slow seep","Steady flow","Gushing / flooding"]}]},
+  {code:"SEWER-BACKUP",name:"Sewer backup / odor",group:"Water Utilities",type:"realtime",keywords:["sewer","sewage","backup","back up","manhole","septic","foul smell"]},
+  {code:"DRAINAGE",name:"Drainage / street flooding",group:"Streets",type:"realtime",keywords:["storm drain","drainage","standing water","flooded street","clogged drain","culvert","ditch"]},
+  {code:"POTHOLE",name:"Pothole / street damage",group:"Streets",type:"realtime",keywords:["pothole","pot hole","pavement","asphalt","road damage","sinkhole"]},
+  {code:"TREE-LIMB",name:"Downed tree / limb",group:"Streets",type:"realtime",keywords:["tree","limb","branch","fallen tree","downed tree","tree down","blocking road"]},
+  {code:"STREETLIGHT",name:"Streetlight outage",group:"Streets",type:"realtime",keywords:["streetlight","street light","street lamp","light pole","dark street","flickering"]},
+  {code:"TRAFFIC-SIGNAL",name:"Traffic signal problem",group:"Streets",type:"realtime",keywords:["traffic signal","traffic light","signal out","signal is out","signal not working"]},
+  {code:"SIGN-DAMAGE",name:"Damaged / missing sign",group:"Streets",type:"realtime",keywords:["stop sign","street sign","traffic sign","sign down","sign is down","missing sign","faded sign","signage"]},
+  {code:"SIDEWALK",name:"Sidewalk / curb repair",group:"Streets",type:"realtime",keywords:["sidewalk","curb","cracked sidewalk","broken sidewalk","uneven sidewalk","trip hazard"]},
+  {code:"TRASH-MISSED",name:"Missed trash / recycling pickup",group:"Solid Waste",type:"realtime",keywords:["trash","garbage","recycling","recycle","pickup","pick up","cart","yard waste","missed","bin"],attributes:[{code:"cart_type",label:"Which cart?",values:["Trash","Recycling","Yard waste"]}]},
+  {code:"ILLEGAL-DUMPING",name:"Illegal dumping",group:"Solid Waste",type:"realtime",keywords:["illegal dumping","dumping","dumped","debris","mattress","discarded","old furniture"]},
+  {code:"DEAD-ANIMAL",name:"Dead animal pickup",group:"Animal Services",type:"realtime",keywords:["dead animal","roadkill","dead dog","dead cat","carcass","dead deer"]},
+  {code:"GRAFFITI",name:"Graffiti removal",group:"Parks",type:"realtime",keywords:["graffiti","tagging","spray paint","vandalism"]},
+  {code:"CODE-VIOLATION",name:"Code violation (weeds / junk)",group:"Code Compliance",type:"realtime",keywords:["high grass","tall grass","weeds","overgrown","junk","abandoned","violation","trash pile"]}
 ];
 const QUESTION_HINTS=["how much","how do i","when is","what time","hours","cost","price","pay my","my bill","balance","due","phone number","where do i","trash day"];
 const DECISIVE_QUESTION=["how much","how do i","when is","what time","hours","cost","price","my bill","balance","due","trash day"];
@@ -183,7 +194,10 @@ function classify(text){
   const t=(text||"").toLowerCase();
   let qHits=QUESTION_HINTS.filter(h=>t.includes(h)).length;
   const decisive=DECISIVE_QUESTION.some(h=>t.includes(h));
-  const scored=CATALOG.map(s=>{let sc=0;s.keywords.forEach(k=>{if(t.includes(k))sc+=(k.length>4?2:1);});return{s,sc};}).sort((a,b)=>b.sc-a.sc);
+  // word-boundary match (mirrors the backend fix): "street" must NOT score inside
+  // "streetlight". Offline fallback only — the backend's service_code wins when online.
+  const kwHit=(k)=>new RegExp("\\b"+k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b").test(t);
+  const scored=CATALOG.map(s=>{let sc=0;s.keywords.forEach(k=>{if(kwHit(k))sc+=(k.length>4?2:1);});return{s,sc};}).sort((a,b)=>b.sc-a.sc);
   const best=scored[0];
   if(decisive||qHits>=2||(qHits>=1&&best.sc<=1)) return {route:"concierge"};
   if(best.sc<=0) return {route:"unknown"};
@@ -272,6 +286,15 @@ async function enrichFromBackend(text){
     const r=await fetch(`${API_BASE}/api/cases/${TENANT}/extract`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text})});
     if(r.ok){
       const d=await r.json();
+      // Adopt the governed extractor's classification (Gemini when LLM=gemini) when it
+      // maps to a catalog code — the LLM drives the CATEGORY, not just the address. The
+      // resident can still correct the dropdown; a low/UNROUTED result keeps our guess.
+      const hit=d.service_code ? CATALOG.find(s=>s.code===d.service_code) : null;
+      if(hit){
+        current=hit; renderOptions(hit.code); renderAttrs();
+        const conf = typeof d.confidence==="number" ? ` · confidence ${(d.confidence*100|0)}%` : "";
+        $("classout").innerHTML=`<span class="pill">✓ ${hit.name}</span><span class="conf">AI-classified${conf} · code <b>${hit.code}</b></span>`;
+      }
       if(d.address && !$("addr").value.trim()){ $("addr").value=d.address; await geocodeAddress(d.address); }
     }
   }catch(_){ /* extraction is best-effort; the resident can always drag the pin */ }
