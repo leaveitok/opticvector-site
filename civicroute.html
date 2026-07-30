@@ -160,8 +160,13 @@ const ANAM_SDK="https://esm.sh/@anam-ai/js-sdk";
 /* Google Maps browser key — public by design, referrer-locked to leaveitok.github.io/*
    and scoped to Maps JavaScript API + Geocoding API only. */
 const MAPS_KEY="AIzaSyAG0SL-1BCcE0gUW8kVysM87pJh8IOcUaA";
-const CITY_CENTER={lat:33.0462,lng:-96.9942};   // Lewisville, TX
-const GEO_BIAS=", Lewisville, TX";
+// Jurisdiction = the city's default map location. STATIC MIRROR of the governed backend
+// tenant config (opticvector-311 `jurisdiction` in govassist backend/app/repositories/mock.py).
+// This public intake page is unauthenticated, so it can't read the RBAC-gated tenant API —
+// keep these values in sync by hand when the staff admin changes the city.
+const JURISDICTION={center:{lat:33.0462,lng:-96.9942},zoom:12,city:"Lewisville, TX"};
+const CITY_CENTER=JURISDICTION.center;
+const GEO_BIAS=", "+JURISDICTION.city;
 let map=null, marker=null, geocoder=null, mapsLoading=null;
 const $ = s => document.getElementById(s);
 
@@ -254,7 +259,7 @@ async function ensureMap(){
   try{ await loadMaps(); }catch(_){ $("coords").textContent="Map unavailable — type the address instead."; return; }
   if(map) return;
   geocoder=new google.maps.Geocoder();
-  map=new google.maps.Map($("map"),{center:CITY_CENTER,zoom:12,mapTypeControl:false,streetViewControl:false,fullscreenControl:false});
+  map=new google.maps.Map($("map"),{center:CITY_CENTER,zoom:JURISDICTION.zoom,mapTypeControl:false,streetViewControl:false,fullscreenControl:false});
   marker=new google.maps.Marker({map,position:CITY_CENTER,draggable:true,title:"Drag me to the exact spot"});
   marker.addListener("dragend",()=>{const p=marker.getPosition();setCoords(p.lat(),p.lng());reverseGeocode(p);});
   map.addListener("click",e=>{marker.setPosition(e.latLng);setCoords(e.latLng.lat(),e.latLng.lng());reverseGeocode(e.latLng);});
