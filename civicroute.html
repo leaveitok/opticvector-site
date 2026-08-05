@@ -125,15 +125,16 @@
           <div class="maphint">📍 <span>Drag the pin to the exact spot — <b>this is the location the crew gets</b>. The address updates to match.</span></div>
         </div>
         <label for="photo">Photo (optional)</label>
-        <input type="text" id="photo" placeholder="filename, or leave blank" />
-        <div class="hint">Production: photo uploads to our boundary; <b>EXIF stripped, faces/plates redacted</b> before the city sees it.</div>
+        <input type="file" id="photo" accept="image/jpeg,image/png,image/webp" />
+        <div class="hint" id="photohint">JPEG, PNG or WebP &middot; up to 10&nbsp;MB &middot; up to 3 per request. <b>Location and camera metadata are stripped</b> before it is stored, and the photo is virus-scanned and held for review before any city staff member can open it. <b>Faces and licence plates are not blurred</b> &mdash; send a photo you are comfortable sharing.</div>
+        <div class="hint" id="photoerr" style="color:#b4322b"></div>
         <div class="row" style="margin-top:8px">
           <div><label for="name" style="margin-top:0">Name (optional)</label><input type="text" id="name" placeholder="optional"></div>
           <div><label for="contact" style="margin-top:0">Email or phone (optional)</label><input type="text" id="contact" placeholder="for status updates"></div>
         </div>
         <div class="consent">
           <input type="checkbox" id="consent" />
-          <label for="consent" style="margin:0;font-weight:500">I consent to the city collecting this report to create and follow up on a service request, retained per the city's records-retention schedule (Texas Public Information Act).</label>
+          <label for="consent" style="margin:0;font-weight:500">I consent to the city collecting this report &mdash; including any photo I attach &mdash; to create and follow up on a service request, retained per the city's records-retention schedule (Texas Public Information Act).</label>
         </div>
         <div id="chanwrap" style="margin-top:10px;font-size:13px;color:#33414e">Update me on:
           <label style="margin:0 10px 0 6px;font-weight:500"><input type="checkbox" class="chan" value="sms" checked> Text (SMS)</label>
@@ -156,6 +157,11 @@
 /* ===== config ===== */
 const API_BASE="https://govassist-api-1083768566009.us-central1.run.app";
 const TENANT="opticvector-311";
+/* Stamped onto every uploaded photo's descriptor. BUMP THIS whenever the consent
+   sentence above changes - it is the only way a stored record can prove which
+   wording the resident actually agreed to. Was "unversioned" before 2026-08-05. */
+const CONSENT_VERSION="civicroute-2026-08-05";
+const MAX_PHOTO_BYTES=10*1024*1024;   // mirrors engine/media.py MAX_BYTES
 const ANAM_SDK="https://esm.sh/@anam-ai/js-sdk";
 /* Google Maps browser key — public by design, referrer-locked to leaveitok.github.io/*
    and scoped to Maps JavaScript API + Geocoding API only. */
@@ -234,7 +240,7 @@ function buildPayload(){
   if($("coords").dataset.lat){p.lat=$("coords").dataset.lat;p.long=$("coords").dataset.lng;}
   const addr=$("addr").value.trim(); if(addr)p.address_string=addr;
   const at=currentAttrs(); Object.keys(at).forEach(k=>p["attribute["+k+"]"]=at[k]);
-  const photo=$("photo").value.trim(); if(photo)p.media_url="https://boundary.opticvector.ai/media/«redacted»/"+encodeURIComponent(photo);
+  const pf=selectedPhoto(); if(pf)p["_photo"]="attached in a SECOND call after the case exists: POST /api/cases/"+TENANT+"/{case_id}/media  ("+Math.round(pf.size/1024)+" KB, metadata stripped server-side)";
   if($("consent").checked){const n=$("name").value.trim();const c=$("contact").value.trim();if(n){const pp=n.split(" ");p.first_name=pp[0];if(pp.length>1)p.last_name=pp.slice(1).join(" ");}if(c){if(c.includes("@"))p.email=c;else p.phone=c;}}
   $("payload").innerHTML=JSON.stringify(p,null,2).replace(/"service_code"/,'"<span class="k">service_code</span>"').replace(/"description"/,'"<span class="k">description</span>"');
 }
@@ -306,26 +312,86 @@ async function enrichFromBackend(text){
   buildPayload();
 }
 
+/* ===== photo ===== */
+function selectedPhoto(){ const el=$("photo"); return (el&&el.files&&el.files[0])||null; }
+
+/* Advisory only. The server sniffs magic bytes and enforces the real limits; this
+   exists so a resident is told "too big" before pushing 12 MB up a phone uplink,
+   not so the client can be trusted. Returns "" when the file is acceptable. */
+function photoProblem(f){
+  if(!f) return "";
+  if(f.size<=0) return "That file is empty.";
+  if(f.size>MAX_PHOTO_BYTES) return "That photo is "+(f.size/1048576).toFixed(1)+" MB - the limit is 10 MB.";
+  if(f.type&&["image/jpeg","image/png","image/webp"].indexOf(f.type)===-1)
+    return "That file type isn't accepted. Attach a JPEG, PNG or WebP photo.";
+  return "";
+}
+
+/* Uploads the selected photo to the case that intake just created. Throws on
+   failure, and the CALLER reports the failure honestly rather than retrying or
+   pretending. Note the 30-minute window in engine/media.py: this only works
+   because it runs seconds after the case opens. */
+async function uploadPhoto(caseId){
+  const f=selectedPhoto();
+  if(!f) return "";
+  const fd=new FormData();
+  fd.append("file",f,f.name||"photo");
+  fd.append("consent","true");                       // gated server-side; refused without it
+  fd.append("consent_text_version",CONSENT_VERSION);
+  const r=await fetch(`${API_BASE}/api/cases/${TENANT}/${caseId}/media`,{method:"POST",body:fd});
+  let j=null; try{ j=await r.json(); }catch(_){}
+  if(!r.ok) throw new Error((j&&j.detail)?j.detail:("the upload failed (http "+r.status+")"));
+  return "\n\n// photo accepted:\n"+JSON.stringify({media_id:j.media_id,status:j.status,content_type:j.content_type,bytes:j.bytes,media_count:j.media_count},null,2)
+        +"\n// "+(j.message||"");
+}
+
 async function submit(){
   $("submitErr").textContent="";
   const text=$("report").value.trim();
   if(!text){$("submitErr").textContent="  Add a description first.";return;}
   if(!$("consent").checked){$("submitErr").textContent="  Please check consent to submit.";return;}
+  const pProb=photoProblem(selectedPhoto());
+  if(pProb){$("photoerr").textContent=pProb;$("submitErr").textContent="  Fix the photo, or clear it, then submit.";return;}
+  $("photoerr").textContent="";
   const channels=[...document.querySelectorAll(".chan:checked")].map(c=>c.value);
   const lat=$("coords").dataset.lat?parseFloat($("coords").dataset.lat):null;
   const lng=$("coords").dataset.lng?parseFloat($("coords").dataset.lng):null;
   const body={text, language:detectLang(text), location:$("addr").value.trim()||null, lat, lng, contact:$("contact").value.trim()||null, channels, consent:true};
   $("submitBtn").disabled=true; status("Submitting…");
+  /* Intake is its OWN try. It used to wrap showResult and the fallback too, which
+     meant a throw AFTER a successful intake dropped into submitMock() and showed
+     the resident an invented LWV-... id for a case that really existed. Only an
+     intake failure may fall back to the simulation. */
+  let d=null;
   try{
     const res=await fetch(`${API_BASE}/api/cases/${TENANT}/intake`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
     if(!res.ok) throw new Error("http "+res.status);
-    await showResult(await res.json(), body);
+    d=await res.json();
   }catch(e){
     submitMock();   // /intake not reachable yet -> client-side simulation
-  }finally{ $("submitBtn").disabled=false; status(live?"Live — speak, or type on the right.":""); }
+    $("submitBtn").disabled=false; status(live?"Live — speak, or type on the right.":"");
+    return;
+  }
+
+  /* A REAL case exists from here down. The photo is a second, separate call, so
+     it can fail on its own - and when it does we say so plainly instead of
+     retrying or letting the success box imply the photo went with it. */
+  let mediaNote="";
+  if(selectedPhoto()){
+    status("Uploading the photo…");
+    try{
+      mediaNote=await uploadPhoto(d.case_id);
+    }catch(e){
+      $("photoerr").textContent="The request was created, but the photo did not attach: "+e.message;
+      mediaNote="\n\n// PHOTO NOT ATTACHED - "+e.message
+               +"\n// The request itself was created and is in the queue. Only the photo failed.";
+    }
+  }
+  try{ await showResult(d, body, mediaNote); }catch(_){}
+  $("submitBtn").disabled=false; status(live?"Live — speak, or type on the right.":"");
 }
 
-async function showResult(d, body){
+async function showResult(d, body, mediaNote){
   $("result").classList.remove("hide");
   const es = body.language==="es";
   const backendLbl = d.backend==="wo" ? "routed to a work-order system (Cityworks)" : "placed in CivicRoute's governed queue";
@@ -349,7 +415,7 @@ async function showResult(d, body){
                               : "\n\n// no confirmation sent (needs a contact + consent + a channel)"; }
   }catch(_){}
   $("rsub").textContent="Live from the governed engine — classify → route → case → notify.";
-  $("payload").textContent=JSON.stringify(panel,null,2)+notesLine;
+  $("payload").textContent=JSON.stringify(panel,null,2)+(mediaNote||"")+notesLine;
   $("result").scrollIntoView({behavior:"smooth",block:"nearest"});
 }
 
@@ -420,7 +486,8 @@ async function endCall(){
 document.querySelectorAll("#examples .chip").forEach(c=>c.addEventListener("click",()=>{$("report").value=c.textContent;onClassify();}));
 $("classifyBtn").addEventListener("click",onClassify);
 $("svc").addEventListener("change",()=>{current=CATALOG.find(s=>s.code===$("svc").value);renderAttrs();buildPayload();});
-["report","addr","photo","name","contact"].forEach(id=>$(id).addEventListener("input",buildPayload));
+["report","addr","name","contact"].forEach(id=>$(id).addEventListener("input",buildPayload));
+$("photo").addEventListener("change",()=>{ $("photoerr").textContent=photoProblem(selectedPhoto()); buildPayload(); });
 $("consent").addEventListener("change",buildPayload);
 $("geoBtn").addEventListener("click",async ()=>{
   await ensureMap();
