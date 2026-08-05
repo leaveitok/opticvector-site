@@ -51,6 +51,27 @@
   .step{border-top:1px solid var(--line);margin-top:16px;padding-top:4px}
   .badge{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#241a00;background:var(--amber);border-radius:6px;padding:2px 7px}
   .conf{font-size:12px;color:var(--mut);margin-left:8px}
+  /* Photo field. Built from the SAME tokens as the text inputs (white surface,
+     #c8d0da border, 10px radius) so it reads as one of the form's own controls
+     rather than a browser default dropped into the middle of the card. The native
+     input is clipped, NOT display:none - display:none removes it from the tab
+     order, and a keyboard user could no longer attach a photo at all. */
+  .filefield{display:flex;align-items:center;gap:11px;background:#fff;border:1px solid #c8d0da;border-radius:10px;padding:9px 10px;transition:border-color .15s ease,box-shadow .15s ease,background .15s ease}
+  .filefield:focus-within{border-color:var(--amber);box-shadow:0 0 0 2px var(--amber)}
+  .filefield.drag{border-color:var(--amber);border-style:dashed;background:#fffaf0}
+  .file-input{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+  .filebtn{display:inline-flex;align-items:center;gap:7px;background:#eef3f9;color:var(--navy);border:1px solid #d6e6f4;border-radius:8px;padding:8px 13px;margin:0;font-weight:700;font-size:13px;line-height:1;cursor:pointer;flex:none;white-space:nowrap}
+  .filebtn:hover{background:#dcecf9}
+  .thumb{width:38px;height:38px;border-radius:8px;object-fit:cover;border:1px solid var(--line);flex:none;display:none;background:#eef3f9}
+  .thumb.show{display:block}
+  .filename{flex:1;min-width:0;font-size:13px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .filename.set{color:var(--ink);font-weight:600}
+  .filename .sz{color:var(--mut);font-weight:400}
+  .filex{display:none;flex:none;background:none;border:none;font:inherit;font-size:12px;font-weight:700;color:var(--mut);cursor:pointer;padding:6px 8px;border-radius:6px}
+  .filex.show{display:block}
+  .filex:hover{color:#c0392b;background:#fdecea}
+  .filex:focus-visible{outline:2px solid var(--amber);outline-offset:1px}
+  @media(max-width:520px){.filefield{flex-wrap:wrap}.filename{flex-basis:100%;order:3}}
   .consent{display:flex;gap:9px;align-items:flex-start;background:#f4f8fc;border:1px solid #dbe8f4;border-radius:10px;padding:11px 12px;margin-top:12px;font-size:13px}
   .consent input{margin-top:3px}
   pre{background:#0b1424;color:#d6e5f5;border-radius:12px;padding:14px;overflow:auto;font-size:12px;line-height:1.5;margin:0}
@@ -125,9 +146,15 @@
           <div class="maphint">📍 <span>Drag the pin to the exact spot — <b>this is the location the crew gets</b>. The address updates to match.</span></div>
         </div>
         <label for="photo">Photo (optional)</label>
-        <input type="file" id="photo" accept="image/jpeg,image/png,image/webp" />
+        <div class="filefield" id="filefield">
+          <input type="file" id="photo" class="file-input" accept="image/jpeg,image/png,image/webp" aria-describedby="photohint" />
+          <label class="filebtn" for="photo">&#128247; Choose a photo</label>
+          <img id="thumb" class="thumb" alt="" />
+          <span class="filename" id="filename">None chosen &mdash; or drag one here</span>
+          <button type="button" class="filex" id="filex" aria-label="Remove the chosen photo">Remove</button>
+        </div>
         <div class="hint" id="photohint">JPEG, PNG or WebP &middot; up to 10&nbsp;MB &middot; up to 3 per request. <b>Location and camera metadata are stripped</b> before it is stored, and the photo is virus-scanned and held for review before any city staff member can open it. <b>Faces and licence plates are not blurred</b> &mdash; send a photo you are comfortable sharing.</div>
-        <div class="hint" id="photoerr" style="color:#b4322b"></div>
+        <div class="hint" id="photoerr" role="alert" style="color:#b4322b"></div>
         <div class="row" style="margin-top:8px">
           <div><label for="name" style="margin-top:0">Name (optional)</label><input type="text" id="name" placeholder="optional"></div>
           <div><label for="contact" style="margin-top:0">Email or phone (optional)</label><input type="text" id="contact" placeholder="for status updates"></div>
@@ -315,6 +342,42 @@ async function enrichFromBackend(text){
 /* ===== photo ===== */
 function selectedPhoto(){ const el=$("photo"); return (el&&el.files&&el.files[0])||null; }
 
+let photoUrl=null;   // object URL for the thumbnail; revoked on every change so a
+                     // resident who swaps photos five times does not leak five blobs.
+function prettySize(b){ return b>=1048576 ? (b/1048576).toFixed(1)+" MB" : Math.max(1,Math.round(b/1024))+" KB"; }
+
+/* Paints the field from whatever is actually in the input. Everything that can
+   change the selection - picking, dropping, removing - routes through here, so
+   there is one place that decides what the field looks like. */
+function renderPhotoField(){
+  const f=selectedPhoto(), name=$("filename"), th=$("thumb"), x=$("filex"), fld=$("filefield");
+  if(photoUrl){ URL.revokeObjectURL(photoUrl); photoUrl=null; }
+  if(!f){
+    name.innerHTML="None chosen \u2014 or drag one here"; name.classList.remove("set");
+    th.classList.remove("show"); th.removeAttribute("src");
+    x.classList.remove("show"); fld.classList.remove("drag");
+    $("photoerr").textContent="";
+    buildPayload(); return;
+  }
+  name.innerHTML=`${f.name.replace(/[<>&]/g,"")} <span class="sz">\u00b7 ${prettySize(f.size)}</span>`;
+  name.classList.add("set");
+  x.classList.add("show"); fld.classList.remove("drag");
+  const problem=photoProblem(f);
+  $("photoerr").textContent=problem;
+  // Only preview what we would actually accept - a thumbnail of a rejected file
+  // reads as "it worked".
+  if(!problem){ photoUrl=URL.createObjectURL(f); th.src=photoUrl; th.alt="Preview of "+f.name; th.classList.add("show"); }
+  else { th.classList.remove("show"); th.removeAttribute("src"); }
+  buildPayload();
+}
+
+function clearPhoto(){
+  const el=$("photo");
+  el.value="";                       // clears .files in every browser we support
+  renderPhotoField();
+  el.focus();                        // keyboard users land back on the control they just emptied
+}
+
 /* Advisory only. The server sniffs magic bytes and enforces the real limits; this
    exists so a resident is told "too big" before pushing 12 MB up a phone uplink,
    not so the client can be trusted. Returns "" when the file is acceptable. */
@@ -487,7 +550,26 @@ document.querySelectorAll("#examples .chip").forEach(c=>c.addEventListener("clic
 $("classifyBtn").addEventListener("click",onClassify);
 $("svc").addEventListener("change",()=>{current=CATALOG.find(s=>s.code===$("svc").value);renderAttrs();buildPayload();});
 ["report","addr","name","contact"].forEach(id=>$(id).addEventListener("input",buildPayload));
-$("photo").addEventListener("change",()=>{ $("photoerr").textContent=photoProblem(selectedPhoto()); buildPayload(); });
+$("photo").addEventListener("change",renderPhotoField);
+$("filex").addEventListener("click",clearPhoto);
+/* Drag and drop onto the field. DataTransfer is how you put a dropped file INTO a
+   real file input - assigning .files directly is the only way, and it keeps the
+   input as the single source of truth so submit() needs no separate code path. */
+(function(){
+  const fld=$("filefield");
+  const stop=e=>{ e.preventDefault(); e.stopPropagation(); };
+  ["dragenter","dragover"].forEach(ev=>fld.addEventListener(ev,e=>{ stop(e); fld.classList.add("drag"); }));
+  ["dragleave","dragend"].forEach(ev=>fld.addEventListener(ev,e=>{ stop(e); fld.classList.remove("drag"); }));
+  fld.addEventListener("drop",e=>{
+    stop(e); fld.classList.remove("drag");
+    const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0];
+    if(!f) return;
+    try{ const dt=new DataTransfer(); dt.items.add(f); $("photo").files=dt.files; }
+    catch(_){ return; }              // very old browser: the Choose button still works
+    renderPhotoField();
+  });
+})();
+renderPhotoField();
 $("consent").addEventListener("change",buildPayload);
 $("geoBtn").addEventListener("click",async ()=>{
   await ensureMap();
