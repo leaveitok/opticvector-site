@@ -189,6 +189,17 @@ const TENANT="opticvector-311";
    wording the resident actually agreed to. Was "unversioned" before 2026-08-05. */
 const CONSENT_VERSION="civicroute-2026-08-05";
 const MAX_PHOTO_BYTES=10*1024*1024;   // mirrors engine/media.py MAX_BYTES
+
+/* WHERE the service code in the dropdown came from. Three sources, and the record
+   has to be able to tell them apart:
+     "local"    - this page's own offline keyword guess. Nobody chose it, so it is
+                  NOT sent; the server classifies from the text instead.
+     "ai"       - Gemini proposed it via /extract and the resident left it alone.
+                  Sent, flagged as AI. Accepting a suggestion is not choosing, and
+                  recording it as the resident's pick understated AI involvement in
+                  a government record - which is the wrong way round to be wrong.
+     "resident" - they actually touched the dropdown. Sent as theirs. */
+let codeSource=null;
 const ANAM_SDK="https://esm.sh/@anam-ai/js-sdk";
 /* Google Maps browser key — public by design, referrer-locked to leaveitok.github.io/*
    and scoped to Maps JavaScript API + Geocoding API only. */
@@ -255,13 +266,13 @@ function onClassify(){
     speakLine(pickVoice("question")); return;
   }
   $("svc").parentElement.classList.remove("hide"); $("submitBtn").parentElement.classList.remove("hide");
-  if(r.route==="unknown"){current=CATALOG[0];out.innerHTML=`<span class="pill route">? Pick the closest type below</span>`;}
+  if(r.route==="unknown"){current=CATALOG[0];codeSource="local";out.innerHTML=`<span class="pill route">? Pick the closest type below</span>`;}
   // The offline keyword guess, shown for the moment before the governed extractor
   // answers (and permanently if the backend is unreachable). No percentage here
   // either: r.confidence is min(0.97, 0.55 + 0.12 x keyword hits), an arithmetic
   // proxy computed in this file. Presenting it as "confidence" was the same
   // category error as showing the model's self-report.
-  else{current=r.service;out.innerHTML=`<span class="pill">✓ ${current.name}</span><span class="conf">matched from your description &middot; change it below if that's not right</span>`;}
+  else{current=r.service;codeSource="local";out.innerHTML=`<span class="pill">✓ ${current.name}</span><span class="conf">matched from your description &middot; change it below if that's not right</span>`;}
   renderOptions(current.code); renderAttrs(); buildPayload();
   enrichFromBackend(text);   // governed extractor proposes the address; the map confirms it
 }
@@ -334,7 +345,7 @@ async function enrichFromBackend(text){
       // resident can still correct the dropdown; a low/UNROUTED result keeps our guess.
       const hit=d.service_code ? CATALOG.find(s=>s.code===d.service_code) : null;
       if(hit){
-        current=hit; renderOptions(hit.code); renderAttrs();
+        current=hit; codeSource="ai"; renderOptions(hit.code); renderAttrs();
         // NO PERCENTAGE HERE, deliberately. The number the extractor returns is
         // Gemini's own estimate of itself - in production it comes back as 1.0,
         // 1.0, 0.9, 1.0, 0.95, 0.9, clustered on round numbers, because it is a
@@ -430,11 +441,15 @@ async function submit(){
   const channels=[...document.querySelectorAll(".chan:checked")].map(c=>c.value);
   const lat=$("coords").dataset.lat?parseFloat($("coords").dataset.lat):null;
   const lng=$("coords").dataset.lng?parseFloat($("coords").dataset.lng):null;
-  // The service type the resident settled on. Until this line existed the
-  // dropdown above was decorative: it said "correct it if needed" and then the
-  // correction was never sent, so the server re-derived the category from the raw
-  // text and silently overruled the person who saw the problem.
-  const body={text, service_code: current ? current.code : null,
+  // The service type, WITH where it came from. Sending the code alone made an
+  // AI decision and a human decision indistinguishable at the backend, and every
+  // AI-routed case got written down as the resident's choice. A code this page
+  // guessed on its own is not sent at all - nobody chose it, so the server should
+  // classify from the text rather than be handed our guess wearing a person's name.
+  const sendCode = (codeSource==="ai" || codeSource==="resident") && current;
+  const body={text,
+              service_code: sendCode ? current.code : null,
+              service_code_source: sendCode ? codeSource : null,
               language:detectLang(text), location:$("addr").value.trim()||null, lat, lng,
               contact:$("contact").value.trim()||null, channels, consent:true};
   $("submitBtn").disabled=true; status("Submitting…");
@@ -480,6 +495,8 @@ const DECIDED_BY = {
   rule:     "your city has a routing rule for this",
   resident: "you chose this category",
   gemini:   "categorised by AI from your description",
+  // the backend distinguishes proposed-and-accepted in the reason it records;
+  // to the resident both are honestly "the AI categorised this".
   keyword:  "categorised from the words in your description",
 };
 function decidedByLabel(d){ return DECIDED_BY[d && d.decided_by] || "categorised from your description"; }
@@ -583,6 +600,7 @@ document.querySelectorAll("#examples .chip").forEach(c=>c.addEventListener("clic
 $("classifyBtn").addEventListener("click",onClassify);
 $("svc").addEventListener("change",()=>{
   current=CATALOG.find(s=>s.code===$("svc").value);
+  codeSource="resident";
   // Say plainly that it is now theirs - and it is: the backend honours a
   // resident-supplied code over both classifiers (a city routing rule still wins).
   if(current) $("classout").innerHTML=`<span class="pill">✓ ${current.name}</span><span class="conf">your choice</span>`;
