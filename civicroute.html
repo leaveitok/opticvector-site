@@ -164,7 +164,12 @@
           <label for="consent" style="margin:0;font-weight:500">I consent to the city collecting this report &mdash; including any photo I attach &mdash; to create and follow up on a service request, retained per the city's records-retention schedule (Texas Public Information Act).</label>
         </div>
         <div id="chanwrap" style="margin-top:10px;font-size:13px;color:#33414e">Update me on:
-          <label style="margin:0 10px 0 6px;font-weight:500"><input type="checkbox" class="chan" value="sms" checked> Text (SMS)</label>
+          <!-- NOTHING is ticked by default. SMS was, and it is the one channel that would
+               silently do nothing: no transport is wired, and of the three it is the one a
+               resident is most likely to assume worked. A resident who ticks nothing gets
+               no updates, which is true and quiet; a resident who ticks SMS and hears
+               nothing has been told something false by the interface. -->
+          <label style="margin:0 10px 0 6px;font-weight:500"><input type="checkbox" class="chan" value="sms"> Text (SMS)</label>
           <label style="margin:0 10px 0 0;font-weight:500"><input type="checkbox" class="chan" value="whatsapp"> WhatsApp</label>
           <label style="margin:0;font-weight:500"><input type="checkbox" class="chan" value="email"> Email</label>
         </div>
@@ -200,6 +205,14 @@ const MAX_PHOTO_BYTES=10*1024*1024;   // mirrors engine/media.py MAX_BYTES
                   a government record - which is the wrong way round to be wrong.
      "resident" - they actually touched the dropdown. Sent as theirs. */
 let codeSource=null;
+/* The SIGNED PROPOSAL from /extract, echoed back verbatim at submit.
+   It is what lets the server tell "our extractor chose this" from a POST that
+   merely says so. Without it the backend cannot substantiate `service_code_source:
+   "ai"`, so it re-runs the classifier to check - correct either way, but a second
+   model call on the resident's submit. Cleared whenever the proposal stops being
+   the thing on screen, so a stale token can never ride along with a code it was
+   not issued for. */
+let codeProposal=null;
 const ANAM_SDK="https://esm.sh/@anam-ai/js-sdk";
 /* Google Maps browser key — public by design, referrer-locked to leaveitok.github.io/*
    and scoped to Maps JavaScript API + Geocoding API only. */
@@ -345,17 +358,32 @@ async function enrichFromBackend(text){
       // resident can still correct the dropdown; a low/UNROUTED result keeps our guess.
       const hit=d.service_code ? CATALOG.find(s=>s.code===d.service_code) : null;
       if(hit){
-        current=hit; codeSource="ai"; renderOptions(hit.code); renderAttrs();
+        current=hit; codeSource="ai"; codeProposal=d.proposal||null; renderOptions(hit.code); renderAttrs();
         // NO PERCENTAGE HERE, deliberately. The number the extractor returns is
         // Gemini's own estimate of itself - in production it comes back as 1.0,
         // 1.0, 0.9, 1.0, 0.95, 0.9, clustered on round numbers, because it is a
         // value the model emitted when the prompt asked for one, not a calibrated
         // probability. Showing it as "confidence 100%" presents a fluent guess as
-        // a measurement. The resident gets provenance, which is true and useful;
-        // the number is recorded on the case for staff and the audit trail.
+        // a measurement. The resident gets provenance, which is true and useful.
+        // The number IS recorded on the case for staff and the audit trail - but
+        // only because the signed proposal below travels with it. Until that
+        // existed this comment was false: the backend refused a score relayed by
+        // an unauthenticated browser, correctly, so model_confidence was null on
+        // every case this page ever created.
         $("classout").innerHTML=`<span class="pill">✓ ${hit.name}</span><span class="conf">suggested by AI &middot; change it below if that's not right</span>`;
       }
-      if(d.address && !$("addr").value.trim()){ $("addr").value=d.address; await geocodeAddress(d.address); }
+      /* AUTOFILL NEVER TYPES OVER SOMEONE. The emptiness check alone was not
+         enough: the field can be empty when the response ARRIVES and have a
+         resident actively typing into it a moment later, so the suggestion lands
+         mid-word and the two get concatenated. Observed live on 2026-08-06 - a
+         report submitted with address_string "corner of Valley Ridge and Kealy" +
+         "Valley Ridge Blvd and Kealy Ave" run together, which is the address a
+         crew would have been sent to. Skipping the fill while the field has focus
+         costs the resident nothing (they are already writing the answer) and is
+         the only condition that actually distinguishes the two cases. */
+      const addrEl=$("addr");
+      const residentIsTyping = document.activeElement===addrEl;
+      if(d.address && !addrEl.value.trim() && !residentIsTyping){ addrEl.value=d.address; await geocodeAddress(d.address); }
     }
   }catch(_){ /* extraction is best-effort; the resident can always drag the pin */ }
   buildPayload();
@@ -450,6 +478,10 @@ async function submit(){
   const body={text,
               service_code: sendCode ? current.code : null,
               service_code_source: sendCode ? codeSource : null,
+              // Only ever sent alongside an "ai" source, because that is the only
+              // claim it is evidence for. Omitting it cannot improve the record -
+              // the server falls back to re-verifying, never to trusting us.
+              proposal: (codeSource==="ai" && sendCode) ? codeProposal : null,
               language:detectLang(text), location:$("addr").value.trim()||null, lat, lng,
               contact:$("contact").value.trim()||null, channels, consent:true};
   $("submitBtn").disabled=true; status("Submitting…");
@@ -601,6 +633,7 @@ $("classifyBtn").addEventListener("click",onClassify);
 $("svc").addEventListener("change",()=>{
   current=CATALOG.find(s=>s.code===$("svc").value);
   codeSource="resident";
+  codeProposal=null;   // their choice now; the model's proposal no longer describes it
   // Say plainly that it is now theirs - and it is: the backend honours a
   // resident-supplied code over both classifiers (a city routing rule still wins).
   if(current) $("classout").innerHTML=`<span class="pill">✓ ${current.name}</span><span class="conf">your choice</span>`;
