@@ -163,6 +163,17 @@
           <input type="checkbox" id="consent" />
           <label for="consent" style="margin:0;font-weight:500">I consent to the city collecting this report &mdash; including any photo I attach &mdash; to create and follow up on a service request, retained per the city's records-retention schedule (Texas Public Information Act).</label>
         </div>
+        <!-- ASK FOR A PERSON. Hidden by default and revealed ONLY when
+             /intake-config says this city offers callbacks - the platform must not
+             put a service commitment on screen that the city never agreed to. The
+             promise text is the server's words, not ours, so what a resident agrees
+             to here and what they are shown on the receipt cannot diverge. -->
+        <div class="consent hide" id="humanwrap" style="margin-top:10px">
+          <input type="checkbox" id="requestHuman" />
+          <label for="requestHuman" style="margin:0;font-weight:500">I'd like a person to call me about this.
+            <span class="hint" id="humanpromise" style="display:block;font-weight:400;margin-top:2px"></span>
+          </label>
+        </div>
         <div id="chanwrap" style="margin-top:10px;font-size:13px;color:#33414e">Update me on:
           <!-- NOTHING is ticked by default. SMS was, and it is the one channel that would
                silently do nothing: no transport is wired, and of the three it is the one a
@@ -463,6 +474,16 @@ async function submit(){
   const text=$("report").value.trim();
   if(!text){$("submitErr").textContent="  Add a description first.";return;}
   if(!$("consent").checked){$("submitErr").textContent="  Please check consent to submit.";return;}
+  // Asking for a call with nothing to call. The server refuses this too, but it
+  // refuses SILENTLY - so without this the resident ticks the box, submits, and
+  // believes a call is coming that was never recorded. Caught here, where they
+  // can still fix it.
+  const wantsHuman=$("requestHuman").checked;
+  if(wantsHuman && !$("contact").value.trim()){
+    $("submitErr").textContent="  Add a phone number or email so someone can call you back.";
+    $("contact").focus();
+    return;
+  }
   const pProb=photoProblem(selectedPhoto());
   if(pProb){$("photoerr").textContent=pProb;$("submitErr").textContent="  Fix the photo, or clear it, then submit.";return;}
   $("photoerr").textContent="";
@@ -483,7 +504,8 @@ async function submit(){
               // the server falls back to re-verifying, never to trusting us.
               proposal: (codeSource==="ai" && sendCode) ? codeProposal : null,
               language:detectLang(text), location:$("addr").value.trim()||null, lat, lng,
-              contact:$("contact").value.trim()||null, channels, consent:true};
+              contact:$("contact").value.trim()||null, channels, consent:true,
+              request_human: wantsHuman};
   $("submitBtn").disabled=true; status("Submitting…");
   /* Intake is its OWN try. It used to wrap showResult and the fallback too, which
      meant a throw AFTER a successful intake dropped into submitMock() and showed
@@ -544,6 +566,18 @@ async function showResult(d, body, mediaNote){
     $("rhead").textContent="Routed";
     $("reqid").innerHTML=`Case <b>${d.case_id}</b> · <b>${d.service_code}</b> → <b>${d.department}</b><br><span class="hint">${decidedByLabel(d)} · ${backendLbl} · status ${d.status}.</span>`;
   }
+  /* THE CALLBACK PROMISE, in the server's words and only when the SERVER says it
+     was recorded. Driven off d.requested_human, never off what the box looked like
+     when it was ticked: the request is refused server-side if the city does not
+     offer callbacks or no contact came through, and a receipt that promised a call
+     in either case would be the only record of a commitment nobody can keep. */
+  if(d.requested_human && d.callback && d.callback.text){
+    const cbLine=document.createElement("div");
+    cbLine.className="hint";
+    cbLine.style.cssText="margin-top:8px;padding:8px 10px;border-left:3px solid var(--accent,#F2A900);background:#fffaf0;color:#33414e";
+    cbLine.textContent=[d.callback.text,d.callback.hours].filter(Boolean).join(" ");
+    $("reqid").appendChild(cbLine);
+  }
   const spoken = d.action==="defer"
     ? (es?`Gracias. Registré su reporte como ${d.case_id}. Un especialista lo revisará y lo enviará al equipo correcto.`:`Thanks. I've logged this as ${d.case_id} and sent it to a specialist to route.`)
     : (es?`Gracias. Registré su reporte como ${d.case_id} y lo envié a ${d.department}.`:`Thanks. I've logged this as ${d.case_id} and routed it to ${d.department}.`);
@@ -556,8 +590,14 @@ async function showResult(d, body, mediaNote){
   try{
     const nr=await fetch(`${API_BASE}/api/cases/${TENANT}/${d.case_id}/notifications`);
     if(nr.ok){ const sent=(await nr.json()).sent||[];
-      notesLine = sent.length ? "\n\n// confirmations sent:\n"+sent.map(s=>`  ${s.channel}: ${s.body}`).join("\n")
-                              : "\n\n// no confirmation sent (needs a contact + consent + a channel)"; }
+      /* NOT "confirmations sent". Nothing is delivered to anyone - services/notify.py
+         has no transport wired and every record comes back status "simulated". This
+         line is shown to the RESIDENT, so calling a composed-but-undelivered message
+         a sent confirmation told the person in front of us that the city had
+         contacted them. The staff console has carried this warning since 00.59; the
+         public page was still claiming the opposite. */
+      notesLine = sent.length ? "\n\n// composed for you - NOT yet delivered (no message transport is connected):\n"+sent.map(s=>`  ${s.channel}: ${s.body}`).join("\n")
+                              : "\n\n// nothing composed (needs a contact + consent + a channel)"; }
   }catch(_){}
   $("rsub").textContent="Live from the governed engine — classify → route → case → notify.";
   $("payload").textContent=JSON.stringify(panel,null,2)+(mediaNote||"")+notesLine;
@@ -626,6 +666,28 @@ async function endCall(){
   $("stage").classList.remove("live"); $("idle").style.display=""; $("startBtn").disabled=false; status("");
   preparing=prepareAvatar();  // warm a fresh client for next time
 }
+
+/* What this city has actually agreed to offer. Fetched, never assumed: a static
+   copy in this file would be the CATALOG mirror-drift problem applied to a service
+   commitment, so a city that switched callbacks off would keep offering them until
+   somebody remembered to edit this page. Failure is silent and SAFE - the tick
+   simply never appears, so we cannot promise what we could not confirm. */
+async function loadIntakeConfig(){
+  try{
+    const r=await fetch(`${API_BASE}/api/cases/${TENANT}/intake-config?language=en`);
+    if(!r.ok) return;
+    const cfg=await r.json();
+    const cb=cfg&&cfg.callback;
+    if(cb&&cb.offered){
+      $("humanwrap").classList.remove("hide");
+      // The SERVER's sentence. Rendering our own here is how the promise a
+      // resident reads drifts from the one the city configured.
+      const p=cb.promise||{};
+      $("humanpromise").textContent=[p.text,p.hours].filter(Boolean).join(" ");
+    }
+  }catch(_){ /* no offer shown; a missing tick is the safe direction */ }
+}
+loadIntakeConfig();
 
 /* ===== wiring ===== */
 document.querySelectorAll("#examples .chip").forEach(c=>c.addEventListener("click",()=>{$("report").value=c.textContent;onClassify();}));
