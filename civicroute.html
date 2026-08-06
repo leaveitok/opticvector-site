@@ -256,7 +256,12 @@ function onClassify(){
   }
   $("svc").parentElement.classList.remove("hide"); $("submitBtn").parentElement.classList.remove("hide");
   if(r.route==="unknown"){current=CATALOG[0];out.innerHTML=`<span class="pill route">? Pick the closest type below</span>`;}
-  else{current=r.service;out.innerHTML=`<span class="pill">✓ ${current.name}</span><span class="conf">confidence ${(r.confidence*100|0)}% · code <b>${current.code}</b></span>`;}
+  // The offline keyword guess, shown for the moment before the governed extractor
+  // answers (and permanently if the backend is unreachable). No percentage here
+  // either: r.confidence is min(0.97, 0.55 + 0.12 x keyword hits), an arithmetic
+  // proxy computed in this file. Presenting it as "confidence" was the same
+  // category error as showing the model's self-report.
+  else{current=r.service;out.innerHTML=`<span class="pill">✓ ${current.name}</span><span class="conf">matched from your description &middot; change it below if that's not right</span>`;}
   renderOptions(current.code); renderAttrs(); buildPayload();
   enrichFromBackend(text);   // governed extractor proposes the address; the map confirms it
 }
@@ -330,8 +335,14 @@ async function enrichFromBackend(text){
       const hit=d.service_code ? CATALOG.find(s=>s.code===d.service_code) : null;
       if(hit){
         current=hit; renderOptions(hit.code); renderAttrs();
-        const conf = typeof d.confidence==="number" ? ` · confidence ${(d.confidence*100|0)}%` : "";
-        $("classout").innerHTML=`<span class="pill">✓ ${hit.name}</span><span class="conf">AI-classified${conf} · code <b>${hit.code}</b></span>`;
+        // NO PERCENTAGE HERE, deliberately. The number the extractor returns is
+        // Gemini's own estimate of itself - in production it comes back as 1.0,
+        // 1.0, 0.9, 1.0, 0.95, 0.9, clustered on round numbers, because it is a
+        // value the model emitted when the prompt asked for one, not a calibrated
+        // probability. Showing it as "confidence 100%" presents a fluent guess as
+        // a measurement. The resident gets provenance, which is true and useful;
+        // the number is recorded on the case for staff and the audit trail.
+        $("classout").innerHTML=`<span class="pill">✓ ${hit.name}</span><span class="conf">suggested by AI &middot; change it below if that's not right</span>`;
       }
       if(d.address && !$("addr").value.trim()){ $("addr").value=d.address; await geocodeAddress(d.address); }
     }
@@ -419,7 +430,13 @@ async function submit(){
   const channels=[...document.querySelectorAll(".chan:checked")].map(c=>c.value);
   const lat=$("coords").dataset.lat?parseFloat($("coords").dataset.lat):null;
   const lng=$("coords").dataset.lng?parseFloat($("coords").dataset.lng):null;
-  const body={text, language:detectLang(text), location:$("addr").value.trim()||null, lat, lng, contact:$("contact").value.trim()||null, channels, consent:true};
+  // The service type the resident settled on. Until this line existed the
+  // dropdown above was decorative: it said "correct it if needed" and then the
+  // correction was never sent, so the server re-derived the category from the raw
+  // text and silently overruled the person who saw the problem.
+  const body={text, service_code: current ? current.code : null,
+              language:detectLang(text), location:$("addr").value.trim()||null, lat, lng,
+              contact:$("contact").value.trim()||null, channels, consent:true};
   $("submitBtn").disabled=true; status("Submitting…");
   /* Intake is its OWN try. It used to wrap showResult and the fallback too, which
      meant a throw AFTER a successful intake dropped into submitMock() and showed
@@ -454,22 +471,38 @@ async function submit(){
   $("submitBtn").disabled=false; status(live?"Live — speak, or type on the right.":"");
 }
 
+/* Who chose the department, in words a resident can act on. This replaces a
+   percentage on purpose: "confidence 70%" invites the question "70% of what?",
+   and for the AI path the honest answer used to be "the model said so". WHO
+   decided is a fact we can stand behind, and it is also the answer a council
+   actually wants when they ask about an AI making routing decisions. */
+const DECIDED_BY = {
+  rule:     "your city has a routing rule for this",
+  resident: "you chose this category",
+  gemini:   "categorised by AI from your description",
+  keyword:  "categorised from the words in your description",
+};
+function decidedByLabel(d){ return DECIDED_BY[d && d.decided_by] || "categorised from your description"; }
+
 async function showResult(d, body, mediaNote){
   $("result").classList.remove("hide");
   const es = body.language==="es";
   const backendLbl = d.backend==="wo" ? "routed to a work-order system (Cityworks)" : "placed in CivicRoute's governed queue";
   if(d.action==="defer"){
     $("rhead").textContent="Received — sent to human triage";
-    $("reqid").innerHTML=`Case <b>${d.case_id}</b> · status <b>${d.status}</b><br><span class="hint">Routing confidence was ${(d.confidence*100|0)}% — below the bar, so we did <b>not</b> guess a department. A specialist reviews and routes it (cite-or-defer, applied to routing).</span>`;
+    $("reqid").innerHTML=`Case <b>${d.case_id}</b> · status <b>${d.status}</b><br><span class="hint">We were <b>not</b> confident enough to pick a department, so we did not guess. A specialist reviews it and routes it (cite-or-defer, applied to routing).</span>`;
   }else{
     $("rhead").textContent="Routed";
-    $("reqid").innerHTML=`Case <b>${d.case_id}</b> · <b>${d.service_code}</b> → <b>${d.department}</b><br><span class="hint">${backendLbl} · confidence ${(d.confidence*100|0)}% · status ${d.status}.</span>`;
+    $("reqid").innerHTML=`Case <b>${d.case_id}</b> · <b>${d.service_code}</b> → <b>${d.department}</b><br><span class="hint">${decidedByLabel(d)} · ${backendLbl} · status ${d.status}.</span>`;
   }
   const spoken = d.action==="defer"
     ? (es?`Gracias. Registré su reporte como ${d.case_id}. Un especialista lo revisará y lo enviará al equipo correcto.`:`Thanks. I've logged this as ${d.case_id} and sent it to a specialist to route.`)
     : (es?`Gracias. Registré su reporte como ${d.case_id} y lo envié a ${d.department}.`:`Thanks. I've logged this as ${d.case_id} and routed it to ${d.department}.`);
   speakLine(spoken);
-  const panel={case_id:d.case_id,action:d.action,service_code:d.service_code,department:d.department,backend:d.backend,confidence:d.confidence,status:d.status};
+  const panel={case_id:d.case_id,action:d.action,service_code:d.service_code,department:d.department,
+               backend:d.backend,status:d.status,decided_by:d.decided_by};
+  // Named so it can never be read as the system's confidence in the routing.
+  if(typeof d.model_confidence==="number") panel.ai_self_rated=d.model_confidence;
   let notesLine="";
   try{
     const nr=await fetch(`${API_BASE}/api/cases/${TENANT}/${d.case_id}/notifications`);
@@ -548,7 +581,13 @@ async function endCall(){
 /* ===== wiring ===== */
 document.querySelectorAll("#examples .chip").forEach(c=>c.addEventListener("click",()=>{$("report").value=c.textContent;onClassify();}));
 $("classifyBtn").addEventListener("click",onClassify);
-$("svc").addEventListener("change",()=>{current=CATALOG.find(s=>s.code===$("svc").value);renderAttrs();buildPayload();});
+$("svc").addEventListener("change",()=>{
+  current=CATALOG.find(s=>s.code===$("svc").value);
+  // Say plainly that it is now theirs - and it is: the backend honours a
+  // resident-supplied code over both classifiers (a city routing rule still wins).
+  if(current) $("classout").innerHTML=`<span class="pill">✓ ${current.name}</span><span class="conf">your choice</span>`;
+  renderAttrs(); buildPayload();
+});
 ["report","addr","name","contact"].forEach(id=>$(id).addEventListener("input",buildPayload));
 $("photo").addEventListener("change",renderPhotoField);
 $("filex").addEventListener("click",clearPhoto);
